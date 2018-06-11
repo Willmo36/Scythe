@@ -1,0 +1,20 @@
+{
+    "name": "game-review",
+    "version": "1.0.0",
+    "main": "ts-node main.ts",
+    "license": "MIT",
+    "scripts": {
+        "build": "tsc",
+        "watch": "tsc -w",
+        "start": "yarn run build && electron ./dist/main.js"
+    },
+    "dependencies": {
+        "date-fns": "next",
+        "electron": "^2.0.2",
+        "ramda": "^0.25.0"
+    },
+    "devDependencies": {
+        "ts-node": "^6.1.0",
+        "typescript": "^2.9.1"
+    }
+}
