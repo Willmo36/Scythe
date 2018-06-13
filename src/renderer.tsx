@@ -6,6 +6,7 @@ import { h, render, Component } from "preact";
 import { either, Either, fromNullable } from "fp-ts/lib/Either";
 import { task, Task } from "fp-ts/lib/Task";
 import { taskEither, TaskEither, taskify, right } from "fp-ts/lib/TaskEither";
+import { spy } from "fp-ts/lib/Trace";
 import * as LRU from "./lru";
 
 const opts: SourcesOptions = {
@@ -40,25 +41,30 @@ const getAudioInfo = new TaskEither<String, MediaDeviceInfo>(
         .map(ds => ds.find(d => d.kind === "audioinput"))
         .map(fromNullable("No audio device info found"))
 );
+
 const getAudioMedia = (info: MediaDeviceInfo) =>
     new Task(() => navigator.mediaDevices.getUserMedia({ audio: { deviceId: info.deviceId } }));
+
 const tryGetAudioMedia = getAudioInfo.map(getAudioMedia).chain(right);
 
 tryGetAudioMedia.fold(console.log.bind(console), setupAudioRecording).run();
 
 function setupAudioRecording(stream: MediaStream) {
-    console.info("starting to process audio");
-    const recorder = new MediaRecorder(stream, { bitsPerSecond: 100000 });
+    console.info("starting to process audio", stream);
+    const recorder = new MediaRecorder(stream, {
+        bitsPerSecond: 100000,
+        mimeType: "audio/webm;codecs=opus"
+    });
 
     let blobs: Blob[] = [];
     recorder.ondataavailable = d => {
-        console.log("audio blob", d.data);
-        blobs.push(d.data);
+        const p = path.join(__dirname, `../recordings/audio_${Date.now().toString()}.mp3`);
+        commitRecordings([d.data], p).then(() => console.log("Audio committed", p));
     };
     recorder.onerror = e => console.error("error", e);
     recorder.onstop = () => console.warn("stopped");
     recorder.start();
-    setTimeout(() => recorder.stop(), 3000);
+    setTimeout(() => recorder.stop(), 6000);
 }
 
 function setupScreenRecording(stream: MediaStream) {
@@ -78,20 +84,23 @@ function setupScreenRecording(stream: MediaStream) {
     ipcRenderer.on("capture_start", () => {
         const blobs = blobCache.queue;
         blobCache = LRU.empty(blobCache);
-        commitRecordings(blobs);
+        const p = path.join(__dirname, `../recordings/recording_${Date.now().toString()}.webm`);
+        commitRecordings(blobs, p);
         updateUI({ text: "Saving..." });
     });
 }
 
-function commitRecordings(blobs: Blob[]): Promise<void> {
+function commitRecordings(blobs: Blob[], filePath: string): Promise<void> {
     const rawBlobs = blobs.map(toArrayBuffer).map(pb => pb.then(toTypedArray));
     console.info(blobs);
     return sequencePromiseArray(rawBlobs)
         .then(bs => bs.reduce(appendUnit8Array, new Uint8Array(0)))
-        .then(b => {
-            const p = path.join(__dirname, `../recordings/recording_${Date.now().toString()}.webm`);
-            return fs.writeFile(p, b, e => console.error(e));
-        });
+        .then(
+            b =>
+                new Promise<void>((res, rej) =>
+                    fs.writeFile(filePath, b, e => (!!e ? rej(e) : res()))
+                )
+        );
 }
 
 export function toArrayBuffer(blob: Blob) {
