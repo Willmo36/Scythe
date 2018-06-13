@@ -11,6 +11,8 @@
     "dependencies": {
         "date-fns": "next",
         "electron": "^2.0.2",
+        "fp-ts": "^1.6.2",
+        "preact": "^8.2.9",
         "ramda": "^0.25.0"
     },
     "devDependencies": {

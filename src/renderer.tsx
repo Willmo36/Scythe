@@ -2,15 +2,17 @@ import { desktopCapturer, SourcesOptions, globalShortcut, ipcRenderer } from "el
 import * as fs from "fs";
 import * as path from "path";
 import { formatRelative } from "date-fns";
+import { h, render, Component } from "preact";
+import { option, fromNullable, Option, None, none } from "fp-ts/lib/Option";
+import { task, Task } from "fp-ts/lib/Task";
 import * as LRU from "./lru";
 
 const opts: SourcesOptions = {
-    types: ["window", "screen"]
+    types: ["window", "screen", "audio"]
 };
 desktopCapturer.getSources(opts, (err, sources) => {
+    console.log("sources", sources);
     const tgt = sources[0];
-    console.info(sources);
-    console.info(tgt);
     const opts: any = {
         audio: false,
         video: {
@@ -27,11 +29,49 @@ desktopCapturer.getSources(opts, (err, sources) => {
 
     navigator.mediaDevices
         .getUserMedia(opts)
-        .then(processStream)
+        .then(setupScreenRecording)
         .catch(e => console.error(e));
 });
 
-function processStream(stream: MediaStream) {
+navigator.mediaDevices
+    .getUserMedia({ audio: true })
+    .then(setupAudioRecording)
+    .catch(e => console.error("audio", e));
+
+const optAudioInfo = navigator.mediaDevices
+    .enumerateDevices()
+    .then(ds => ds.find(d => d.kind === "audioinput"))
+    .then(fromNullable);
+
+const optAudioStream = optAudioInfo.then(optInfo => {
+    //might need to use traverse to flip from
+    // Option<Promise<X>> -> Promise<Option<X>>
+    const d: Promise<Option<MediaStream>> = Promise.resolve(none);
+    const x = optInfo.chain(d =>
+        option.of(navigator.mediaDevices.getUserMedia({ audio: { deviceId: d.deviceId } }))
+    );
+});
+
+//end up with Promise<Option<MediaStream>>
+
+navigator.mediaDevices.enumerateDevices().then(ds => ds.find(d => d.kind === "audioinput"));
+
+function setupAudioRecording(stream: MediaStream) {
+    console.info("starting to process audio");
+    const recorder = new MediaRecorder(stream, { bitsPerSecond: 100000 });
+
+    let blobs: Blob[] = [];
+    recorder.ondataavailable = d => {
+        console.log("audio blob", d.data);
+        blobs.push(d.data);
+    };
+    recorder.onerror = e => console.error("error", e);
+    recorder.onstop = () => console.warn("stopped");
+    recorder.start();
+    setTimeout(() => recorder.stop(), 3000);
+}
+
+function setupScreenRecording(stream: MediaStream) {
     console.info("starting to process");
     const recorder = new MediaRecorder(stream, { bitsPerSecond: 100000 });
 
@@ -43,24 +83,14 @@ function processStream(stream: MediaStream) {
     recorder.onerror = e => console.error("error", e);
     recorder.onstop = () => console.warn("stopped");
     recorder.start(1000);
+    updateUI({ text: "Watching" });
 
     ipcRenderer.on("capture_start", () => {
         const blobs = blobCache.queue;
         blobCache = LRU.empty(blobCache);
         commitRecordings(blobs);
+        updateUI({ text: "Saving..." });
     });
-
-    // setTimeout(() => {
-    //     recorder.stop();
-    //     const rawBlobs = blobs.queue.map(toArrayBuffer).map(pb => pb.then(toTypedArray));
-    //     console.info(blobs);
-    //     sequencePromiseArray(rawBlobs)
-    //         .then(bs => bs.reduce(appendUnit8Array, new Uint8Array(0)))
-    //         .then(b => {
-    //             const p = path.join(__dirname, "../recordings/recording_.webm");
-    //             return fs.writeFile(p, b, e => console.error(e));
-    //         });
-    // }, 9000);
 }
 
 function commitRecordings(blobs: Blob[]): Promise<void> {
@@ -73,15 +103,6 @@ function commitRecordings(blobs: Blob[]): Promise<void> {
             return fs.writeFile(p, b, e => console.error(e));
         });
 }
-
-// function processBlob(blob: Blob) {
-//     const p = path.join(__dirname, "../recordings/recording.webm");
-//     toArrayBuffer(blob)
-//         .then(toTypedArray)
-//         .then(data => {
-//             fs.writeFile(p, data, e => console.error(e));
-//         });
-// }
 
 export function toArrayBuffer(blob: Blob) {
     return new Promise<ArrayBuffer>((resolve, reject) => {
@@ -102,21 +123,6 @@ export function toTypedArray(ab: ArrayBuffer) {
     return new Uint8Array(ab);
 }
 
-// function appendBlobs(a: Blob, b: Blob): Promise<Uint8Array> {
-//     return toArrayBuffer(a)
-//         .then(toTypedArray)
-//         .then(aRes =>
-//             toArrayBuffer(b)
-//                 .then(toTypedArray)
-//                 .then(bRes => {
-//                     let res = new Uint8Array(aRes.length + bRes.length);
-//                     res.set(aRes, 0);
-//                     res.set(bRes, aRes.length);
-//                     return res;
-//                 })
-//         );
-// }
-
 function appendUnit8Array(a: Uint8Array, b: Uint8Array): Uint8Array {
     let res = new Uint8Array(a.length + b.length);
     res.set(a, 0);
@@ -133,4 +139,17 @@ function sequencePromiseArray<A>(ps: Promise<A>[]): Promise<A[]> {
         const f = p.then(a => (as: A[]): A[] => [...as, a]);
         return apPromise(acc, f);
     }, Promise.resolve([]));
+}
+
+type AppProps = { text: string };
+class App extends Component<AppProps> {
+    render(props: AppProps) {
+        return <div>{props.text}</div>;
+    }
+}
+const appDiv = document.querySelector("#app")!;
+render(<App text="init" />, appDiv);
+
+function updateUI(state: AppProps) {
+    render(<App {...state} />, appDiv, appDiv.lastChild as Element);
 }
