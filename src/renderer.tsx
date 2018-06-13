@@ -10,7 +10,7 @@ import { spy } from "fp-ts/lib/Trace";
 import * as LRU from "./lru";
 
 namespace Video {
-    export const getSources = new Task(
+    const getSources = new Task(
         () =>
             new Promise<Electron.DesktopCapturerSource[]>((res, rej) =>
                 desktopCapturer.getSources(
@@ -20,7 +20,7 @@ namespace Video {
             )
     );
 
-    export const getVideoMedia = getSources.map(s => s[0]).chain(src => {
+    const getVideoMedia = getSources.map(s => s[0]).chain(src => {
         const opts: any = {
             audio: false,
             video: {
@@ -37,6 +37,32 @@ namespace Video {
 
         return new Task(() => navigator.mediaDevices.getUserMedia(opts));
     });
+
+    const setupVideoRecording = (stream: MediaStream) => {
+        let blobCache: LRU.LRU<Blob> = LRU.create(15, []);
+        const recorder = new MediaRecorder(stream, { bitsPerSecond: 100000 });
+
+        recorder.ondataavailable = d => {
+            blobCache = LRU.insert(blobCache, d.data);
+        };
+
+        recorder.onerror = e => console.error("error", e);
+        recorder.onstop = () => console.warn("stopped");
+        recorder.start(1000);
+
+        const onCaptureStart = () => {
+            const p = path.join(__dirname, `../recordings/recording_${Date.now().toString()}.webm`);
+            commitRecordings(blobCache.queue, p).then(() => console.info("Video captured"));
+        };
+
+        const captureStartListener = ipcRenderer.on("capture_start", onCaptureStart);
+
+        return () => {
+            captureStartListener.removeListener("capture_start", onCaptureStart);
+        };
+    };
+
+    export const start = () => getVideoMedia.map(setupVideoRecording).run();
 }
 
 namespace Audio {
@@ -51,66 +77,44 @@ namespace Audio {
         new Task(() => navigator.mediaDevices.getUserMedia({ audio: { deviceId: info.deviceId } }));
 
     export const tryGetAudioMedia = getAudioInfo.map(getAudioMedia).chain(right);
+
+    export const setupAudioRecording = (stream: MediaStream) => {
+        const recorder = new MediaRecorder(stream, {
+            bitsPerSecond: 100000,
+            mimeType: "audio/webm;codecs=opus"
+        });
+
+        recorder.ondataavailable = d => {
+            const p = path.join(__dirname, `../recordings/audio_${Date.now().toString()}.mp3`);
+            commitRecordings([d.data], p).then(() => console.log("Audio committed", p));
+        };
+
+        recorder.onerror = e => console.error("error", e);
+        recorder.onstop = () => console.warn("stopped");
+
+        const onCaptureStart = () => recorder.start();
+        const onCaptureStop = () => recorder.stop();
+        const captureStartListener = ipcRenderer.on("capture_start", onCaptureStart);
+        const captureStopListener = ipcRenderer.on("capture_stop", onCaptureStop);
+
+        //return a teardown fn
+        return () => {
+            captureStartListener.removeListener("capture_start", onCaptureStart);
+            captureStopListener.removeListener("capture_stop", onCaptureStop);
+            recorder.stop();
+        };
+    };
+
+    export const start = () => tryGetAudioMedia.fold(warn, setupAudioRecording).run();
 }
 
 function start() {
-    Video.getVideoMedia.map(setupScreenRecording).run();
-    Audio.tryGetAudioMedia.fold(warn, setupAudioRecording).run();
-}
-
-function setupAudioRecording(stream: MediaStream) {
-    const recorder = new MediaRecorder(stream, {
-        bitsPerSecond: 100000,
-        mimeType: "audio/webm;codecs=opus"
-    });
-
-    recorder.ondataavailable = d => {
-        const p = path.join(__dirname, `../recordings/audio_${Date.now().toString()}.mp3`);
-        commitRecordings([d.data], p).then(() => console.log("Audio committed", p));
-    };
-
-    recorder.onerror = e => console.error("error", e);
-    recorder.onstop = () => console.warn("stopped");
-
-    const onCaptureStart = () => recorder.start();
-    const onCaptureStop = () => recorder.stop();
-    const captureStartListener = ipcRenderer.on("capture_start", onCaptureStart);
-    const captureStopListener = ipcRenderer.on("capture_stop", onCaptureStop);
-
-    //return a teardown fn
-    return () => {
-        captureStartListener.removeListener("capture_start", onCaptureStart);
-        captureStopListener.removeListener("capture_stop", onCaptureStop);
-        recorder.stop();
-    };
-}
-
-function setupScreenRecording(stream: MediaStream) {
-    console.info("starting to process");
-    const recorder = new MediaRecorder(stream, { bitsPerSecond: 100000 });
-
-    let blobCache: LRU.LRU<Blob> = LRU.create(15, []);
-    recorder.ondataavailable = d => {
-        blobCache = LRU.insert(blobCache, d.data);
-        //processBlob(d.data);
-    };
-    recorder.onerror = e => console.error("error", e);
-    recorder.onstop = () => console.warn("stopped");
-    recorder.start(1000);
-    updateUI({ text: "Watching" });
-
-    ipcRenderer.on("capture_start", () => {
-        const blobs = blobCache.queue;
-        blobCache = LRU.empty(blobCache);
-        const p = path.join(__dirname, `../recordings/recording_${Date.now().toString()}.webm`);
-        commitRecordings(blobs, p);
-        updateUI({ text: "Saving..." });
-    });
+    Video.start();
+    Audio.start();
 }
 
 function commitRecordings(blobs: Blob[], filePath: string): Promise<void> {
     const rawBlobs = blobs.map(toArrayBuffer).map(pb => pb.then(toTypedArray));
-    console.info(blobs);
     return sequencePromiseArray(rawBlobs)
         .then(bs => bs.reduce(appendUnit8Array, new Uint8Array(0)))
         .then(
