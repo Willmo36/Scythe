@@ -3,8 +3,9 @@ import * as fs from "fs";
 import * as path from "path";
 import { formatRelative } from "date-fns";
 import { h, render, Component } from "preact";
-import { option, fromNullable, Option, None, none } from "fp-ts/lib/Option";
+import { either, Either, fromNullable } from "fp-ts/lib/Either";
 import { task, Task } from "fp-ts/lib/Task";
+import { taskEither, TaskEither, taskify, right } from "fp-ts/lib/TaskEither";
 import * as LRU from "./lru";
 
 const opts: SourcesOptions = {
@@ -33,28 +34,17 @@ desktopCapturer.getSources(opts, (err, sources) => {
         .catch(e => console.error(e));
 });
 
-navigator.mediaDevices
-    .getUserMedia({ audio: true })
-    .then(setupAudioRecording)
-    .catch(e => console.error("audio", e));
+const getAllAudioInfo = new Task(() => navigator.mediaDevices.enumerateDevices());
+const getAudioInfo = new TaskEither<String, MediaDeviceInfo>(
+    getAllAudioInfo
+        .map(ds => ds.find(d => d.kind === "audioinput"))
+        .map(fromNullable("No audio device info found"))
+);
+const getAudioMedia = (info: MediaDeviceInfo) =>
+    new Task(() => navigator.mediaDevices.getUserMedia({ audio: { deviceId: info.deviceId } }));
+const tryGetAudioMedia = getAudioInfo.map(getAudioMedia).chain(right);
 
-const optAudioInfo = navigator.mediaDevices
-    .enumerateDevices()
-    .then(ds => ds.find(d => d.kind === "audioinput"))
-    .then(fromNullable);
-
-const optAudioStream = optAudioInfo.then(optInfo => {
-    //might need to use traverse to flip from
-    // Option<Promise<X>> -> Promise<Option<X>>
-    const d: Promise<Option<MediaStream>> = Promise.resolve(none);
-    const x = optInfo.chain(d =>
-        option.of(navigator.mediaDevices.getUserMedia({ audio: { deviceId: d.deviceId } }))
-    );
-});
-
-//end up with Promise<Option<MediaStream>>
-
-navigator.mediaDevices.enumerateDevices().then(ds => ds.find(d => d.kind === "audioinput"));
+tryGetAudioMedia.fold(console.log.bind(console), setupAudioRecording).run();
 
 function setupAudioRecording(stream: MediaStream) {
     console.info("starting to process audio");
