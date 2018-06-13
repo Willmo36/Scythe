@@ -9,62 +9,80 @@ import { taskEither, TaskEither, taskify, right } from "fp-ts/lib/TaskEither";
 import { spy } from "fp-ts/lib/Trace";
 import * as LRU from "./lru";
 
-const opts: SourcesOptions = {
-    types: ["window", "screen", "audio"]
-};
-desktopCapturer.getSources(opts, (err, sources) => {
-    console.log("sources", sources);
-    const tgt = sources[0];
-    const opts: any = {
-        audio: false,
-        video: {
-            mandatory: {
-                chromeMediaSource: "desktop",
-                chromeMediaSourceId: tgt.id,
-                minWidth: 800,
-                maxWidth: 1280,
-                minHeight: 600,
-                maxHeight: 720
+namespace Video {
+    export const getSources = new Task(
+        () =>
+            new Promise<Electron.DesktopCapturerSource[]>((res, rej) =>
+                desktopCapturer.getSources(
+                    { types: ["window", "screen"] },
+                    (err, srcs) => (!!err ? rej : res(srcs))
+                )
+            )
+    );
+
+    export const getVideoMedia = getSources.map(s => s[0]).chain(src => {
+        const opts: any = {
+            audio: false,
+            video: {
+                mandatory: {
+                    chromeMediaSource: "desktop",
+                    chromeMediaSourceId: src.id,
+                    minWidth: 800,
+                    maxWidth: 1280,
+                    minHeight: 600,
+                    maxHeight: 720
+                }
             }
-        }
-    };
+        };
 
-    navigator.mediaDevices
-        .getUserMedia(opts)
-        .then(setupScreenRecording)
-        .catch(e => console.error(e));
-});
+        return new Task(() => navigator.mediaDevices.getUserMedia(opts));
+    });
+}
 
-const getAllAudioInfo = new Task(() => navigator.mediaDevices.enumerateDevices());
-const getAudioInfo = new TaskEither<String, MediaDeviceInfo>(
-    getAllAudioInfo
-        .map(ds => ds.find(d => d.kind === "audioinput"))
-        .map(fromNullable("No audio device info found"))
-);
+namespace Audio {
+    const getAllAudioInfo = new Task(() => navigator.mediaDevices.enumerateDevices());
+    const getAudioInfo = new TaskEither<String, MediaDeviceInfo>(
+        getAllAudioInfo
+            .map(ds => ds.find(d => d.kind === "audioinput"))
+            .map(fromNullable("No audio device info found"))
+    );
 
-const getAudioMedia = (info: MediaDeviceInfo) =>
-    new Task(() => navigator.mediaDevices.getUserMedia({ audio: { deviceId: info.deviceId } }));
+    const getAudioMedia = (info: MediaDeviceInfo) =>
+        new Task(() => navigator.mediaDevices.getUserMedia({ audio: { deviceId: info.deviceId } }));
 
-const tryGetAudioMedia = getAudioInfo.map(getAudioMedia).chain(right);
+    export const tryGetAudioMedia = getAudioInfo.map(getAudioMedia).chain(right);
+}
 
-tryGetAudioMedia.fold(console.log.bind(console), setupAudioRecording).run();
+function start() {
+    Video.getVideoMedia.map(setupScreenRecording).run();
+    Audio.tryGetAudioMedia.fold(warn, setupAudioRecording).run();
+}
 
 function setupAudioRecording(stream: MediaStream) {
-    console.info("starting to process audio", stream);
     const recorder = new MediaRecorder(stream, {
         bitsPerSecond: 100000,
         mimeType: "audio/webm;codecs=opus"
     });
 
-    let blobs: Blob[] = [];
     recorder.ondataavailable = d => {
         const p = path.join(__dirname, `../recordings/audio_${Date.now().toString()}.mp3`);
         commitRecordings([d.data], p).then(() => console.log("Audio committed", p));
     };
+
     recorder.onerror = e => console.error("error", e);
     recorder.onstop = () => console.warn("stopped");
-    recorder.start();
-    setTimeout(() => recorder.stop(), 6000);
+
+    const onCaptureStart = () => recorder.start();
+    const onCaptureStop = () => recorder.stop();
+    const captureStartListener = ipcRenderer.on("capture_start", onCaptureStart);
+    const captureStopListener = ipcRenderer.on("capture_stop", onCaptureStop);
+
+    //return a teardown fn
+    return () => {
+        captureStartListener.removeListener("capture_start", onCaptureStart);
+        captureStopListener.removeListener("capture_stop", onCaptureStop);
+        recorder.stop();
+    };
 }
 
 function setupScreenRecording(stream: MediaStream) {
@@ -152,3 +170,7 @@ render(<App text="init" />, appDiv);
 function updateUI(state: AppProps) {
     render(<App {...state} />, appDiv, appDiv.lastChild as Element);
 }
+
+let warn = console.warn.bind(console);
+
+start();

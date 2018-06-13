@@ -13,6 +13,10 @@ function createWindow() {
     globalShortcut.register("f8", () => {
         win.webContents.send("capture_start");
     });
+
+    globalShortcut.register("f9", () => {
+        win.webContents.send("capture_stop");
+    });
 }
 
 app.on("ready", createWindow);
