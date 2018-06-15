@@ -15,6 +15,9 @@ type WriteFn = (bs: Blob[]) => void;
 type CommandStreams = { captureStart$: most.Stream<Event>; captureStop$: most.Stream<Event> };
 type RecorderSetup = (streams: CommandStreams) => (ms: MediaStream) => most.Stream<Blob[]>;
 
+const warn = console.warn.bind(console);
+const runAll = (task$: most.Stream<Task<any>>) => new Task(() => task$.forEach(t => t.run()));
+
 namespace Video {
     const getSources = new Task(
         () =>
@@ -62,7 +65,7 @@ namespace Video {
         return commands.captureStart$.map(() => blobCache.queue);
     };
 
-    export const start = (evs: CommandStreams) =>
+    export const setup = (evs: CommandStreams) =>
         getVideoMedia
             .map(setupVideoRecording(evs))
             .map(blobs$ => blobs$.map(createCommitRecordingsTask("mp4")));
@@ -100,40 +103,22 @@ namespace Audio {
             .chain(() => dataAvailable$);
     };
 
-    export const start = (cmds: CommandStreams) =>
+    export const setup = (cmds: CommandStreams) =>
         tryGetAudioMedia
             .fold(warn, setupAudioRecording(cmds))
             .map(blobs$ => blobs$.map(createCommitRecordingsTask("mp3")));
 }
 
-function start() {
-    //bah this isn't going to work, because the audio & screen will commit at slightly different times
-    //the request to write needs to provide the path
-    //this will be much simpler to orchestrate with mostjs
-    const write: WriteFn = bs => {
-        const root = path.join(__dirname, "../recordings");
-        const recDirPath = path.join(root, `${Date.now().toString()}`);
-        fs.mkdirSync(recDirPath);
-    };
+const captureStart$ = most.fromEvent("capture_start", ipcRenderer);
+const captureStop$ = most.fromEvent("capture_stop", ipcRenderer);
+const commands: CommandStreams = { captureStart$, captureStop$ };
 
-    const captureStart$ = most.fromEvent("capture_start", ipcRenderer);
-    const captureStop$ = most.fromEvent("capture_stop", ipcRenderer);
-    const commands: CommandStreams = { captureStart$, captureStop$ };
+//turn Video & Audio into "recorder" semigroups
+const video = Video.setup(commands).chain(runAll);
+const audio = Audio.setup(commands).chain(runAll);
 
-    Video.start(commands)
-        .chain(runAll)
-        .run();
-
-    Audio.start(commands)
-        .chain(runAll)
-        .run();
-
-    /**
-     * todo
-     * turn ipc listeners into streams which emit a directory path (or just a write function?)
-     * use mostjs for this
-     */
-}
+//audio desn't work if I run this task :/
+const recorders = video.chain(() => audio);
 
 function commitRecordings(blobs: Blob[], filePath: string): Promise<void> {
     const rawBlobs = blobs.map(toArrayBuffer).map(pb => pb.then(toTypedArray));
@@ -151,8 +136,6 @@ const createCommitRecordingsTask = (ext: string) => (bs: Blob[]): Task<void> =>
     new Task(() =>
         commitRecordings(bs, path.join(__dirname, `../recordings/${Date.now().toString()}.${ext}`))
     );
-
-const runAll = (task$: most.Stream<Task<any>>) => new Task(() => task$.forEach(t => t.run()));
 
 export function toArrayBuffer(blob: Blob) {
     return new Promise<ArrayBuffer>((resolve, reject) => {
@@ -204,6 +187,5 @@ function updateUI(state: AppProps) {
     render(<App {...state} />, appDiv, appDiv.lastChild as Element);
 }
 
-let warn = console.warn.bind(console);
-
-start();
+video.run();
+audio.run();
