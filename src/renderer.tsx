@@ -62,7 +62,10 @@ namespace Video {
         return commands.captureStart$.map(() => blobCache.queue);
     };
 
-    export const start = (evs: CommandStreams) => getVideoMedia.map(setupVideoRecording(evs)).run();
+    export const start = (evs: CommandStreams) =>
+        getVideoMedia
+            .map(setupVideoRecording(evs))
+            .map(blobs$ => blobs$.map(createCommitRecordingsTask("mp4")));
 }
 
 namespace Audio {
@@ -97,8 +100,10 @@ namespace Audio {
             .chain(() => dataAvailable$);
     };
 
-    export const start = (writeFn: WriteFn) =>
-        tryGetAudioMedia.fold(warn, setupAudioRecording(writeFn)).run();
+    export const start = (cmds: CommandStreams) =>
+        tryGetAudioMedia
+            .fold(warn, setupAudioRecording(cmds))
+            .map(blobs$ => blobs$.map(createCommitRecordingsTask("mp3")));
 }
 
 function start() {
@@ -115,8 +120,13 @@ function start() {
     const captureStop$ = most.fromEvent("capture_stop", ipcRenderer);
     const commands: CommandStreams = { captureStart$, captureStop$ };
 
-    Video.start(commands);
-    Audio.start(commands);
+    Video.start(commands)
+        .chain(runAll)
+        .run();
+
+    Audio.start(commands)
+        .chain(runAll)
+        .run();
 
     /**
      * todo
@@ -136,6 +146,13 @@ function commitRecordings(blobs: Blob[], filePath: string): Promise<void> {
                 )
         );
 }
+
+const createCommitRecordingsTask = (ext: string) => (bs: Blob[]): Task<void> =>
+    new Task(() =>
+        commitRecordings(bs, path.join(__dirname, `../recordings/${Date.now().toString()}.${ext}`))
+    );
+
+const runAll = (task$: most.Stream<Task<any>>) => new Task(() => task$.forEach(t => t.run()));
 
 export function toArrayBuffer(blob: Blob) {
     return new Promise<ArrayBuffer>((resolve, reject) => {
