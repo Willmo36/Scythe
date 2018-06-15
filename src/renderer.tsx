@@ -7,7 +7,13 @@ import { either, Either, fromNullable } from "fp-ts/lib/Either";
 import { task, Task } from "fp-ts/lib/Task";
 import { taskEither, TaskEither, taskify, right } from "fp-ts/lib/TaskEither";
 import { spy } from "fp-ts/lib/Trace";
+import * as most from "most";
+import { create as createStream } from "@most/create";
 import * as LRU from "./lru";
+
+type WriteFn = (bs: Blob[]) => void;
+type CommandStreams = { captureStart$: most.Stream<Event>; captureStop$: most.Stream<Event> };
+type RecorderSetup = (streams: CommandStreams) => (ms: MediaStream) => most.Stream<Blob[]>;
 
 namespace Video {
     const getSources = new Task(
@@ -18,27 +24,30 @@ namespace Video {
                     (err, srcs) => (!!err ? rej : res(srcs))
                 )
             )
-    );
+    ).map(spy);
 
-    const getVideoMedia = getSources.map(s => s[0]).chain(src => {
-        const opts: any = {
-            audio: false,
-            video: {
-                mandatory: {
-                    chromeMediaSource: "desktop",
-                    chromeMediaSourceId: src.id,
-                    minWidth: 800,
-                    maxWidth: 1280,
-                    minHeight: 600,
-                    maxHeight: 720
+    const getVideoMedia = getSources
+        .map(s => s[0])
+        .chain(src => {
+            const opts: any = {
+                audio: false,
+                video: {
+                    mandatory: {
+                        chromeMediaSource: "desktop",
+                        chromeMediaSourceId: src.id,
+                        minWidth: 800,
+                        maxWidth: 1280,
+                        minHeight: 600,
+                        maxHeight: 720
+                    }
                 }
-            }
-        };
+            };
 
-        return new Task(() => navigator.mediaDevices.getUserMedia(opts));
-    });
+            return new Task(() => navigator.mediaDevices.getUserMedia(opts));
+        })
+        .map(spy);
 
-    const setupVideoRecording = (stream: MediaStream) => {
+    const setupVideoRecording: RecorderSetup = commands => stream => {
         let blobCache: LRU.LRU<Blob> = LRU.create(15, []);
         const recorder = new MediaRecorder(stream, { bitsPerSecond: 100000 });
 
@@ -50,19 +59,10 @@ namespace Video {
         recorder.onstop = () => console.warn("stopped");
         recorder.start(1000);
 
-        const onCaptureStart = () => {
-            const p = path.join(__dirname, `../recordings/recording_${Date.now().toString()}.webm`);
-            commitRecordings(blobCache.queue, p).then(() => console.info("Video captured"));
-        };
-
-        const captureStartListener = ipcRenderer.on("capture_start", onCaptureStart);
-
-        return () => {
-            captureStartListener.removeListener("capture_start", onCaptureStart);
-        };
+        return commands.captureStart$.map(() => blobCache.queue);
     };
 
-    export const start = () => getVideoMedia.map(setupVideoRecording).run();
+    export const start = (evs: CommandStreams) => getVideoMedia.map(setupVideoRecording(evs)).run();
 }
 
 namespace Audio {
@@ -78,39 +78,51 @@ namespace Audio {
 
     export const tryGetAudioMedia = getAudioInfo.map(getAudioMedia).chain(right);
 
-    export const setupAudioRecording = (stream: MediaStream) => {
+    export const setupAudioRecording: RecorderSetup = commands => stream => {
         const recorder = new MediaRecorder(stream, {
             bitsPerSecond: 100000,
             mimeType: "audio/webm;codecs=opus"
         });
 
-        recorder.ondataavailable = d => {
-            const p = path.join(__dirname, `../recordings/audio_${Date.now().toString()}.mp3`);
-            commitRecordings([d.data], p).then(() => console.log("Audio committed", p));
-        };
+        const dataAvailable$ = createStream<Blob[]>((add, end) => {
+            recorder.ondataavailable = d => {
+                add([d.data]);
+                end();
+            };
+        });
 
-        recorder.onerror = e => console.error("error", e);
-        recorder.onstop = () => console.warn("stopped");
-
-        const onCaptureStart = () => recorder.start();
-        const onCaptureStop = () => recorder.stop();
-        const captureStartListener = ipcRenderer.on("capture_start", onCaptureStart);
-        const captureStopListener = ipcRenderer.on("capture_stop", onCaptureStop);
-
-        //return a teardown fn
-        return () => {
-            captureStartListener.removeListener("capture_start", onCaptureStart);
-            captureStopListener.removeListener("capture_stop", onCaptureStop);
-            recorder.stop();
-        };
+        return commands.captureStart$
+            .tap(() => recorder.start())
+            .chain(() => commands.captureStop$.tap(() => recorder.stop()))
+            .chain(() => dataAvailable$);
     };
 
-    export const start = () => tryGetAudioMedia.fold(warn, setupAudioRecording).run();
+    export const start = (writeFn: WriteFn) =>
+        tryGetAudioMedia.fold(warn, setupAudioRecording(writeFn)).run();
 }
 
 function start() {
-    Video.start();
-    Audio.start();
+    //bah this isn't going to work, because the audio & screen will commit at slightly different times
+    //the request to write needs to provide the path
+    //this will be much simpler to orchestrate with mostjs
+    const write: WriteFn = bs => {
+        const root = path.join(__dirname, "../recordings");
+        const recDirPath = path.join(root, `${Date.now().toString()}`);
+        fs.mkdirSync(recDirPath);
+    };
+
+    const captureStart$ = most.fromEvent("capture_start", ipcRenderer);
+    const captureStop$ = most.fromEvent("capture_stop", ipcRenderer);
+    const commands: CommandStreams = { captureStart$, captureStop$ };
+
+    Video.start(commands);
+    Audio.start(commands);
+
+    /**
+     * todo
+     * turn ipc listeners into streams which emit a directory path (or just a write function?)
+     * use mostjs for this
+     */
 }
 
 function commitRecordings(blobs: Blob[], filePath: string): Promise<void> {

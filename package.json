@@ -9,9 +9,11 @@
         "start": "yarn run build && electron ./dist/main.js"
     },
     "dependencies": {
+        "@most/create": "^2.0.1",
         "date-fns": "next",
         "electron": "^2.0.2",
         "fp-ts": "^1.6.2",
+        "most": "^1.7.3",
         "preact": "^8.2.9",
         "ramda": "^0.25.0"
     },
