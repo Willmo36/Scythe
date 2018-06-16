@@ -24,4 +24,4 @@ function runAll<T>(task$: most.Stream<Task<T>>) {
 const audio = Audio.setup(commands).chain(runAll);
 const video = Video.setup(commands).chain(runAll);
 const recorders = [video, audio];
-Promise.all(recorders.map(r => r.run())).catch(e => console.error("app error"));
+Promise.all(recorders.map(r => r.run())).catch(e => console.error("app error", e));

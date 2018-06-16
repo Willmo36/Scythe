@@ -12,7 +12,11 @@ export const writeBlobs = (ext: string) => (blobs: Blob[]): Task<void> =>
             .then(
                 b =>
                     new Promise<void>((res, rej) => fs.writeFile(p, b, e => (!!e ? rej(e) : res())))
-            );
+            )
+            .then(x => {
+                console.info("Write complete");
+                return x;
+            });
     });
 
 function toArrayBuffer(blob: Blob) {
