@@ -28,7 +28,8 @@ export const setupAudioRecording: RecorderSetup = commands => stream => {
 
     const dataAvailable$ = create<Blob[]>((add, end) => {
         recorder.ondataavailable = d => {
-            add([d.data]);
+            const b = new Blob([d.data], { type: "audio/webm" });
+            add([b]);
             end();
         };
     });
@@ -42,6 +43,6 @@ export const setupAudioRecording: RecorderSetup = commands => stream => {
 export const setup = (cmds: CommandStreams) =>
     tryGetAudioMedia
         .fold(warn, setupAudioRecording(cmds))
-        .map(blobs$ => blobs$.map(writeBlobs("mp3")));
+        .map(blobs$ => blobs$.map(writeBlobs("webm")));
 
 const warn = console.warn.bind(console);

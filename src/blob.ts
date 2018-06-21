@@ -15,6 +15,10 @@ export const writeBlobs = (ext: string) => (blobs: Blob[]): Task<void> =>
             )
             .then(x => {
                 console.info("Write complete");
+
+                //temp do the ffmpeg thingy here
+                //then change video/audio apis to return a stream instead of a Task
+
                 return x;
             });
     });

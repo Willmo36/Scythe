@@ -35,6 +35,7 @@ function start() {
 
     Promise.all(recorders.map(r => r.run())).catch(e => console.error("Recorder error", e));
 
+    //Maybe our state should be the latest event in the system, rather than the current
     const state$: most.Stream<RS.RecordState> = most
         .of<RS.RecordState>(RS.video())
         .merge(commands.captureStart$.map<RS.RecordState>(() => RS.videoAudio()))

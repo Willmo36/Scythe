@@ -47,8 +47,8 @@ const setupVideoRecording: RecorderSetup = commands => stream => {
     recorder.onstop = () => console.warn("stopped");
     recorder.start(1000);
 
-    return commands.captureStart$.map(() => blobCache.queue);
+    return commands.captureStart$.map(() => [new Blob(blobCache.queue, { type: "video/webm" })]);
 };
 
 export const setup = (evs: CommandStreams) =>
-    getVideoMedia.map(setupVideoRecording(evs)).map(blobs$ => blobs$.map(writeBlobs("mp4")));
+    getVideoMedia.map(setupVideoRecording(evs)).map(blobs$ => blobs$.map(writeBlobs("webm")));
