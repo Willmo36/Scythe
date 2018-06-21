@@ -4,9 +4,10 @@ import { fromNullable } from "fp-ts/lib/Either";
 import { create } from "@most/create";
 import { CommandStreams } from "../commands";
 import { Stream } from "most";
-import { writeBlobs } from "../blob";
+import * as path from "path";
+import { writeBlobTask } from "../blob";
 
-type RecorderSetup = (streams: CommandStreams) => (ms: MediaStream) => Stream<Blob[]>;
+type RecorderSetup = (streams: CommandStreams) => (ms: MediaStream) => Stream<Blob>;
 
 const getAllAudioInfo = new Task(() => navigator.mediaDevices.enumerateDevices());
 const getAudioInfo = new TaskEither<String, MediaDeviceInfo>(
@@ -26,10 +27,10 @@ export const setupAudioRecording: RecorderSetup = commands => stream => {
         mimeType: "audio/webm;codecs=opus"
     });
 
-    const dataAvailable$ = create<Blob[]>((add, end) => {
+    const dataAvailable$ = create<Blob>((add, end) => {
         recorder.ondataavailable = d => {
             const b = new Blob([d.data], { type: "audio/webm" });
-            add([b]);
+            add(b);
             end();
         };
     });
@@ -43,6 +44,9 @@ export const setupAudioRecording: RecorderSetup = commands => stream => {
 export const setup = (cmds: CommandStreams) =>
     tryGetAudioMedia
         .fold(warn, setupAudioRecording(cmds))
-        .map(blobs$ => blobs$.map(writeBlobs("webm")));
+        .map(blobs$ => blobs$.map(writeBlobTask(buildAudioPath())));
 
 const warn = console.warn.bind(console);
+
+const buildAudioPath = () =>
+    path.join(process.cwd(), `/recording_tmp/audio_${Date.now().toString()}.webm`);

@@ -1,12 +1,13 @@
 import { h, render } from "preact";
-import { Task } from "fp-ts/lib/Task";
+import { Task, fromIO } from "fp-ts/lib/Task";
+import { spy } from "fp-ts/lib/Trace";
 import * as most from "most";
 import { commands } from "../commands";
 import * as Video from "../recorders/video";
 import * as Audio from "../recorders/audio";
+import { buildFFMPEGMergeCommand, execCommandIgnoreError } from "../recorders/merger";
 import { Overlay } from "../overlay/Overlay";
 import * as RS from "../domain/RecordState";
-import { merge } from "../recorders/merger";
 
 //this is defo wrong
 function runAll<T>(task$: most.Stream<Task<T>>) {
@@ -19,12 +20,21 @@ function updateUI(state: RS.RecordState) {
 }
 
 function start() {
-    //turn Video & Audio into "recorder" semigroups
-    const audio = Audio.setup(commands).chain(runAll);
-    const video = Video.setup(commands).chain(runAll);
-    const recorders = [video, audio];
+    const audio = Audio.setup(commands);
+    const video = Video.setup(commands);
+    const audioVideo = audio.ap(video.map(zipAudioVideoStreams));
 
-    Promise.all(recorders.map(r => r.run())).catch(e => console.error("Recorder error", e));
+    const merged = audioVideo.map(captured$ =>
+        captured$.map(captureT =>
+            captureT.chain(paths => {
+                const cmd = buildFFMPEGMergeCommand(paths.video, paths.audio);
+                console.log("Running something, ", cmd);
+                return execCommandIgnoreError(cmd);
+            })
+        )
+    );
+
+    merged.chain(runAll).run();
 
     //Maybe our state should be the latest event in the system, rather than the current
     const state$: most.Stream<RS.RecordState> = most
@@ -33,8 +43,11 @@ function start() {
         .merge(commands.captureStop$.map<RS.RecordState>(() => RS.video()));
 
     state$.forEach(updateUI);
-
-    setTimeout(merge, 1500);
 }
+
+const zipAudioVideoStreams = (a$: most.Stream<Task<string>>) => (b$: most.Stream<Task<string>>) =>
+    most.zip((a, b) => b.ap(a.map(mergeAudioVideoResult)), a$, b$);
+
+let mergeAudioVideoResult = (video: string) => (audio: string) => ({ audio, video });
 
 start();

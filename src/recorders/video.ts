@@ -3,9 +3,10 @@ import { desktopCapturer } from "electron";
 import { Stream } from "most";
 import { CommandStreams } from "../commands";
 import * as LRU from "../LRU";
-import { writeBlobs } from "../blob";
+import { writeBlobTask } from "../blob";
+import * as path from "path";
 
-type RecorderSetup = (streams: CommandStreams) => (ms: MediaStream) => Stream<Blob[]>;
+type RecorderSetup = (streams: CommandStreams) => (ms: MediaStream) => Stream<Blob>;
 
 const getSources = new Task(
     () =>
@@ -47,8 +48,13 @@ const setupVideoRecording: RecorderSetup = commands => stream => {
     recorder.onstop = () => console.warn("stopped");
     recorder.start(1000);
 
-    return commands.captureStart$.map(() => [new Blob(blobCache.queue, { type: "video/webm" })]);
+    return commands.captureStart$.map(() => new Blob(blobCache.queue, { type: "video/webm" }));
 };
 
 export const setup = (evs: CommandStreams) =>
-    getVideoMedia.map(setupVideoRecording(evs)).map(blobs$ => blobs$.map(writeBlobs("webm")));
+    getVideoMedia
+        .map(setupVideoRecording(evs))
+        .map(blobs$ => blobs$.map(writeBlobTask(buildVideoPath())));
+
+const buildVideoPath = () =>
+    path.join(process.cwd(), `/recording_tmp/video_${Date.now().toString()}.webm`);

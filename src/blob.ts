@@ -23,7 +23,15 @@ export const writeBlobs = (ext: string) => (blobs: Blob[]): Task<void> =>
             });
     });
 
-function toArrayBuffer(blob: Blob) {
+export const writeBlobTask = (path: string) => (blob: Blob): Task<string> =>
+    new Task(() => toArrayBuffer(blob)).map(toTypedArray).chain(writeFileTask(path));
+
+export const writeFileTask = (p: string) => (d: Uint8Array): Task<string> =>
+    new Task(
+        () => new Promise<string>((res, rej) => fs.writeFile(p, d, e => (!!e ? rej(e) : res(p))))
+    );
+
+function toArrayBuffer(blob: Blob): Promise<ArrayBuffer> {
     return new Promise<ArrayBuffer>((resolve, reject) => {
         let fileReader = new FileReader();
         fileReader.onload = function(ev) {
