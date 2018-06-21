@@ -1,21 +1,12 @@
-import { desktopCapturer, SourcesOptions, globalShortcut, ipcRenderer } from "electron";
-import * as fs from "fs";
-import * as path from "path";
-import { formatRelative } from "date-fns";
-import { h, render, Component } from "preact";
-import { either, Either, fromNullable } from "fp-ts/lib/Either";
-import { task, Task } from "fp-ts/lib/Task";
-import { taskEither, TaskEither, taskify, right } from "fp-ts/lib/TaskEither";
-import { spy } from "fp-ts/lib/Trace";
+import { h, render } from "preact";
+import { Task } from "fp-ts/lib/Task";
 import * as most from "most";
-import { create as createStream } from "@most/create";
-import * as LRU from "../lru";
-import { CommandStreams, commands } from "../commands";
-import { writeBlobs } from "../blob";
+import { commands } from "../commands";
 import * as Video from "../recorders/video";
 import * as Audio from "../recorders/audio";
-import { OverlayProps, Overlay } from "../overlay/Overlay";
+import { Overlay } from "../overlay/Overlay";
 import * as RS from "../domain/RecordState";
+import { merge } from "../recorders/merger";
 
 //this is defo wrong
 function runAll<T>(task$: most.Stream<Task<T>>) {
@@ -42,6 +33,8 @@ function start() {
         .merge(commands.captureStop$.map<RS.RecordState>(() => RS.video()));
 
     state$.forEach(updateUI);
+
+    setTimeout(merge, 1500);
 }
 
 start();
