@@ -16,7 +16,7 @@ export const buildVideoPartPath = (i: number) =>
 export const buildFFMPEGMergeAudioVideoCommand = (vPath: string, aPath: string) =>
     `${
         ffmpegStatic.path
-    } -i ${vPath} -i ${aPath} -acodec copy -vcodec copy -strict -2 ${buildOutputPath()}`;
+    } -i ${vPath} -i ${aPath} -vcodec copy -acodec copy -strict -2 ${buildOutputPath()}`;
 
 export const buildMergePartsCommand = (fullPath: string) => (paths: string[]) =>
     `${ffmpegStatic.path} -i "concat:${paths.join("|")}" ${fullPath}`;
