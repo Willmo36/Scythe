@@ -3,7 +3,7 @@ import { Task, fromIO } from "fp-ts/lib/Task";
 import { spy } from "fp-ts/lib/Trace";
 import * as most from "most";
 import { commands } from "../commands";
-import * as Video from "../recorders/video";
+import * as Video from "../recorders/video2";
 import * as Audio from "../recorders/audio";
 import { buildFFMPEGMergeAudioVideoCommand, execCommandIgnoreError } from "../recorders/merger";
 import { Overlay } from "../overlay/Overlay";
