@@ -26,11 +26,13 @@ function start() {
 
     const merged = audioVideo.map(captured$ =>
         captured$.map(captureT =>
-            captureT.chain(paths => {
-                const cmd = buildFFMPEGMergeAudioVideoCommand(paths.video, paths.audio);
-                console.log("Running something, ", cmd);
-                return execCommandIgnoreError(cmd);
-            })
+            captureT
+                .chain(paths => {
+                    const cmd = buildFFMPEGMergeAudioVideoCommand(paths.video, paths.audio);
+                    console.log("Running something, ", cmd);
+                    return execCommandIgnoreError(cmd);
+                })
+                .map(spy)
         )
     );
 

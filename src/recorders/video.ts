@@ -32,11 +32,7 @@ const getVideoMedia = getSources.map(s => s[0]).chain(src => {
         video: {
             mandatory: {
                 chromeMediaSource: "desktop",
-                chromeMediaSourceId: src.id,
-                minWidth: 800,
-                maxWidth: 1280,
-                minHeight: 600,
-                maxHeight: 720
+                chromeMediaSourceId: src.id
             }
         }
     };
@@ -46,9 +42,13 @@ const getVideoMedia = getSources.map(s => s[0]).chain(src => {
 
 const setupVideoRecording: RecorderSetup = commands => stream => {
     let blobCache: LRU.LRU<Blob> = LRU.create(15, []);
-    const recorder = new MediaRecorder(stream, { bitsPerSecond: 100000 });
+    const recorder = new MediaRecorder(stream, {
+        bitsPerSecond: 100000,
+        mimeType: "video/webm;codecs=vp9"
+    });
 
     recorder.ondataavailable = d => {
+        console.info("LRU size", blobCache.queue.length);
         blobCache = LRU.insert(blobCache, d.data);
     };
 

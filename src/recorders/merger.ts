@@ -22,5 +22,5 @@ export const buildMergePartsCommand = (fullPath: string) => (paths: string[]) =>
     `${ffmpegStatic.path} -i "concat:${paths.join("|")}" ${fullPath}`;
 
 //ffmpeg reports into stdErr, so there's no point in handling rejection
-export const execCommandIgnoreError = (cmd: string): Task<void> =>
-    new Task(() => new Promise<void>(res => exec(cmd, () => res())));
+export const execCommandIgnoreError = (cmd: string): Task<string> =>
+    new Task(() => new Promise<string>(res => exec(cmd, (err, stdout, stderr) => res(stderr))));
