@@ -28,6 +28,7 @@ function start() {
         captured$.map(captureT =>
             captureT
                 .chain(paths => {
+                    console.log(paths);
                     const cmd = buildFFMPEGMergeAudioVideoCommand(paths.video, paths.audio);
                     console.log("Running something, ", cmd);
                     return execCommandIgnoreError(cmd);

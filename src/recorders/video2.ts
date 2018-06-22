@@ -29,7 +29,7 @@ const getVideoMedia = getSources.map(s => s[0]).chain(src => {
     return new Task(() => navigator.mediaDevices.getUserMedia(opts));
 });
 
-const createRecorderTask = (stream: MediaStream): Promise<Blob> =>
+const createRecorderPromise = (stream: MediaStream): Promise<Blob> =>
     new Promise(res => {
         const recorder = new MediaRecorder(stream, { mimeType: "video/webm;codecs=vp9" });
         recorder.ondataavailable = d => res(d.data);
@@ -40,7 +40,7 @@ const createRecorderTask = (stream: MediaStream): Promise<Blob> =>
     });
 
 const createRecordingStream = (stream: MediaStream): Stream<Blob> =>
-    periodic(1000).chain(() => fromPromise(createRecorderTask(stream)));
+    periodic(1000).chain(() => fromPromise(createRecorderPromise(stream)));
 
 const setupRecorders = (cmds: CommandStreams) =>
     getVideoMedia.map(createRecordingStream).map(r$ => r$.sampleWith(cmds.captureStart$));

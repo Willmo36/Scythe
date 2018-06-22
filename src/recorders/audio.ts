@@ -3,9 +3,10 @@ import { TaskEither, right } from "fp-ts/lib/TaskEither";
 import { fromNullable } from "fp-ts/lib/Either";
 import { create } from "@most/create";
 import { CommandStreams } from "../commands";
-import { Stream } from "most";
+import { Stream, fromPromise } from "most";
 import * as path from "path";
 import { writeBlobTask } from "../blob";
+import { spy } from "fp-ts/lib/Trace";
 
 type RecorderSetup = (streams: CommandStreams) => (ms: MediaStream) => Stream<Blob>;
 
@@ -22,6 +23,7 @@ const getAudioMedia = (info: MediaDeviceInfo) =>
 export const tryGetAudioMedia = getAudioInfo.map(getAudioMedia).chain(right);
 
 export const setupAudioRecording: RecorderSetup = commands => stream => {
+    //todo, create recorder per captureStart4
     const recorder = new MediaRecorder(stream, {
         bitsPerSecond: 100000,
         mimeType: "audio/webm;codecs=opus"
@@ -41,9 +43,28 @@ export const setupAudioRecording: RecorderSetup = commands => stream => {
         .chain(() => dataAvailable$);
 };
 
+const foo = (cmds: CommandStreams) => (stream: MediaStream) =>
+    cmds.captureStart$.chain(() => {
+        const recorder = new MediaRecorder(stream, {
+            bitsPerSecond: 100000,
+            mimeType: "audio/webm;codecs=opus"
+        });
+
+        const dataAvailable = new Promise<Blob>(res => {
+            recorder.ondataavailable = d => res(d.data);
+        });
+
+        recorder.start();
+
+        return cmds.captureStop$
+            .tap(() => recorder.stop())
+            .chain(() => fromPromise(dataAvailable))
+            .tap(spy);
+    });
+
 export const setup = (cmds: CommandStreams) =>
     tryGetAudioMedia
-        .fold(warn, setupAudioRecording(cmds))
+        .fold(warn, foo(cmds))
         .map(blobs$ => blobs$.map(writeBlobTask(buildAudioPath())));
 
 const warn = console.warn.bind(console);
