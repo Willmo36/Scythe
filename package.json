@@ -10,6 +10,7 @@
     },
     "dependencies": {
         "@most/create": "^2.0.1",
+        "@types/ramda": "^0.25.34",
         "date-fns": "next",
         "electron": "^2.0.2",
         "ffmpeg-static": "^2.3.0",

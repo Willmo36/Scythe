@@ -7,10 +7,19 @@ var ffmpegStatic = require("ffmpeg-static");
 const buildOutputPath = () =>
     path.join(process.cwd(), `/output/Scythe_${Date.now().toString()}.mp4`);
 
-export const buildFFMPEGMergeCommand = (vPath: string, aPath: string) =>
+export const buildVideoPath = () =>
+    path.join(process.cwd(), `/recording_tmp/video_${Date.now().toString()}.webm`);
+
+export const buildVideoPartPath = (i: number) =>
+    path.join(process.cwd(), `/recording_tmp/video_part_${i}_${Date.now().toString()}.webm`);
+
+export const buildFFMPEGMergeAudioVideoCommand = (vPath: string, aPath: string) =>
     `${
         ffmpegStatic.path
     } -i ${vPath} -i ${aPath} -acodec copy -vcodec copy -strict -2 ${buildOutputPath()}`;
+
+export const buildMergePartsCommand = (fullPath: string) => (paths: string[]) =>
+    `${ffmpegStatic.path} -i "concat:${paths.join("|")}" ${fullPath}`;
 
 //ffmpeg reports into stdErr, so there's no point in handling rejection
 export const execCommandIgnoreError = (cmd: string): Task<void> =>

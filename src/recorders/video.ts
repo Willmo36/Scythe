@@ -4,9 +4,17 @@ import { Stream } from "most";
 import { CommandStreams } from "../commands";
 import * as LRU from "../LRU";
 import { writeBlobTask } from "../blob";
-import * as path from "path";
+import { sequenceTaskArray } from "../utils/task";
+import {
+    buildMergePartsCommand,
+    execCommandIgnoreError,
+    buildVideoPath,
+    buildVideoPartPath
+} from "./merger";
+import { spy, traceM } from "fp-ts/lib/Trace";
+import { logWith } from "../utils/log";
 
-type RecorderSetup = (streams: CommandStreams) => (ms: MediaStream) => Stream<Blob>;
+type RecorderSetup = (streams: CommandStreams) => (ms: MediaStream) => Stream<Blob[]>;
 
 const getSources = new Task(
     () =>
@@ -48,13 +56,23 @@ const setupVideoRecording: RecorderSetup = commands => stream => {
     recorder.onstop = () => console.warn("stopped");
     recorder.start(1000);
 
-    return commands.captureStart$.map(() => new Blob(blobCache.queue, { type: "video/webm" }));
+    return commands.captureStart$.map(() => blobCache.queue);
 };
 
 export const setup = (evs: CommandStreams) =>
-    getVideoMedia
-        .map(setupVideoRecording(evs))
-        .map(blobs$ => blobs$.map(writeBlobTask(buildVideoPath())));
+    getVideoMedia.map(setupVideoRecording(evs)).map(blobs$ => blobs$.map(combineBlobParts));
 
-const buildVideoPath = () =>
-    path.join(process.cwd(), `/recording_tmp/video_${Date.now().toString()}.webm`);
+const combineBlobParts = (bs: Blob[]): Task<string> => {
+    console.info(`${bs.length} parts to write`);
+    const fullPath = buildVideoPath();
+    const partPaths = sequenceTaskArray(bs.map((b, i) => writeBlobTask(buildVideoPartPath(i))(b)));
+    const fullClipPath = partPaths
+        .map(logWith("Parts written"))
+        .map(buildMergePartsCommand(fullPath))
+        .map(logWith("Command to exec: "))
+        .chain(execCommandIgnoreError)
+        .map(logWith("Command ran"))
+        .map(() => fullPath);
+
+    return fullClipPath;
+};

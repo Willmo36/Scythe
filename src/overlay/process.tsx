@@ -5,7 +5,7 @@ import * as most from "most";
 import { commands } from "../commands";
 import * as Video from "../recorders/video";
 import * as Audio from "../recorders/audio";
-import { buildFFMPEGMergeCommand, execCommandIgnoreError } from "../recorders/merger";
+import { buildFFMPEGMergeAudioVideoCommand, execCommandIgnoreError } from "../recorders/merger";
 import { Overlay } from "../overlay/Overlay";
 import * as RS from "../domain/RecordState";
 
@@ -27,7 +27,7 @@ function start() {
     const merged = audioVideo.map(captured$ =>
         captured$.map(captureT =>
             captureT.chain(paths => {
-                const cmd = buildFFMPEGMergeCommand(paths.video, paths.audio);
+                const cmd = buildFFMPEGMergeAudioVideoCommand(paths.video, paths.audio);
                 console.log("Running something, ", cmd);
                 return execCommandIgnoreError(cmd);
             })
