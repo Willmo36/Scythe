@@ -25,7 +25,7 @@ export const tryGetAudioMedia = getAudioInfo.map(getAudioMedia).chain(right);
 export const setupAudioRecording: RecorderSetup = commands => stream => {
     //todo, create recorder per captureStart4
     const recorder = new MediaRecorder(stream, {
-        bitsPerSecond: 100000,
+        bitsPerSecond: 128000,
         mimeType: "audio/webm;codecs=opus"
     });
 
@@ -46,7 +46,7 @@ export const setupAudioRecording: RecorderSetup = commands => stream => {
 const foo = (cmds: CommandStreams) => (stream: MediaStream) =>
     cmds.captureStart$.chain(() => {
         const recorder = new MediaRecorder(stream, {
-            bitsPerSecond: 100000,
+            bitsPerSecond: 128000,
             mimeType: "audio/webm;codecs=opus"
         });
 

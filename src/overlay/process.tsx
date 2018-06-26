@@ -28,6 +28,8 @@ function start() {
         captured$.map(captureT =>
             captureT
                 .chain(paths => {
+                    //TODO - CONVERT THE AUDIO TO OPUS FIRST
+
                     console.log(paths);
                     const cmd = buildFFMPEGMergeAudioVideoCommand(paths.video, paths.audio);
                     console.log("Running something, ", cmd);
@@ -38,14 +40,6 @@ function start() {
     );
 
     merged.chain(runAll).run();
-
-    //Maybe our state should be the latest event in the system, rather than the current
-    const state$: most.Stream<RS.RecordState> = most
-        .of<RS.RecordState>(RS.video())
-        .merge(commands.captureStart$.map<RS.RecordState>(() => RS.videoAudio()))
-        .merge(commands.captureStop$.map<RS.RecordState>(() => RS.video()));
-
-    state$.forEach(updateUI);
 }
 
 const zipAudioVideoStreams = (a$: most.Stream<Task<string>>) => (b$: most.Stream<Task<string>>) =>
