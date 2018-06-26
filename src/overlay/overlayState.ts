@@ -1,5 +1,4 @@
 import { Config, initializeConfig } from "../domain/config";
-import { create } from "@most/create";
 import { Stream, merge, fromEvent } from "most";
 import { createInitHandler } from "./handlers/init";
 import { EventEmitter } from "events";

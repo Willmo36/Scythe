@@ -13,6 +13,8 @@
         "@most/create": "^2.0.1",
         "@most/scheduler": "^1.2.0",
         "@types/ramda": "^0.25.34",
+        "@types/react": "^16.4.2",
+        "@types/react-dom": "^16.0.6",
         "date-fns": "next",
         "electron": "^2.0.2",
         "ffmpeg-static": "^2.3.0",
@@ -22,7 +24,9 @@
         "most": "^1.7.3",
         "most-subject": "^6.0.0",
         "preact": "^8.2.9",
-        "ramda": "^0.25.0"
+        "ramda": "^0.25.0",
+        "react": "^16.4.1",
+        "react-dom": "^16.4.1"
     },
     "devDependencies": {
         "ts-node": "^6.1.0",

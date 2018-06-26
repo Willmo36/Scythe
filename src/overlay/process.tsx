@@ -1,4 +1,3 @@
-import { h, render } from "preact";
 import { Task, fromIO } from "fp-ts/lib/Task";
 import { spy } from "fp-ts/lib/Trace";
 import * as most from "most";
@@ -21,15 +20,17 @@ import { equals } from "ramda";
 import produce from "immer";
 import { inProgress, completed } from "../domain/RemoteData";
 import { fromPromise } from "most";
+import * as React from "react";
+import * as ReactDOM from "react-dom";
 
 //this is defo wrong
 function runAll<T>(task$: most.Stream<Task<T>>) {
     return new Task(() => task$.forEach(t => t.run()));
 }
 
-function updateUI(state: RS.RecordState) {
+function updateUI(state: OverlayState) {
     const appDiv = document.querySelector("#app")!;
-    render(<Overlay state={state} />, appDiv, appDiv.lastChild as Element);
+    ReactDOM.render(<Overlay state={state} />, appDiv);
 }
 
 function start() {
@@ -53,11 +54,9 @@ function start() {
 
     const { dispatch, transition$ } = createDispatcher();
 
-    const state$ = createStateStream(transition$);
+    const state$ = createStateStream(transition$.tap(spy));
 
-    state$.forEach(s => {
-        console.log("State", s);
-    });
+    state$.tap(spy).forEach(updateUI);
 
     process.nextTick(() => dispatch({ type: "INIT" }));
 }
