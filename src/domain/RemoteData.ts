@@ -69,3 +69,4 @@ export class Failed<A> {
 export const notStarted = <A>() => new NotStarted<A>();
 export const inProgress = <A>() => new InProgress<A>();
 export const completed = <A>(a: A) => new Completed(a);
+export const failed = <A>(err: any) => new Failed<A>();

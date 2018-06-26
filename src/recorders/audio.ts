@@ -7,11 +7,12 @@ import { Stream, fromPromise } from "most";
 import * as path from "path";
 import { writeBlobTask } from "../blob";
 import { spy } from "fp-ts/lib/Trace";
+import { filter } from "ramda";
 
 type RecorderSetup = (streams: CommandStreams) => (ms: MediaStream) => Stream<Blob>;
 
-const getAllAudioInfo = new Task(() => navigator.mediaDevices.enumerateDevices());
-const getAudioInfo = new TaskEither<String, MediaDeviceInfo>(
+export const getAllAudioInfo = new Task(() => navigator.mediaDevices.enumerateDevices());
+export const getAudioInfo = new TaskEither<String, MediaDeviceInfo>(
     getAllAudioInfo
         .map(ds => ds.find(d => d.kind === "audioinput"))
         .map(fromNullable("No audio device info found"))
