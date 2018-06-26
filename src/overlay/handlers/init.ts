@@ -12,8 +12,8 @@ const initHandler: TransitionHandler = t =>
         : create<StateUpdate>(add => {
               add(
                   produce<OverlayState>(d => {
-                      d.config.audio.devices = inProgress();
-                      d.config.video.screens = inProgress();
+                      d.config.audioDevices = inProgress();
+                      d.config.videoScreens = inProgress();
                   })
               );
 
@@ -21,11 +21,11 @@ const initHandler: TransitionHandler = t =>
                   .bimap<StateUpdate, StateUpdate>(
                       err =>
                           produce(d => {
-                              d.config.audio.devices = failed(err);
+                              d.config.audioDevices = failed(err);
                           }),
                       dcs =>
                           produce(d => {
-                              d.config.audio.devices = completed(dcs);
+                              d.config.audioDevices = completed(dcs);
                           })
                   )
                   .fold(add, add)
@@ -35,11 +35,11 @@ const initHandler: TransitionHandler = t =>
                   .bimap<StateUpdate, StateUpdate>(
                       err =>
                           produce(d => {
-                              d.config.video.screens = failed(err);
+                              d.config.videoScreens = failed(err);
                           }),
                       dcs =>
                           produce(d => {
-                              d.config.video.screens = completed(dcs);
+                              d.config.videoScreens = completed(dcs);
                           })
                   )
                   .fold(add, add)
