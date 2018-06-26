@@ -4,8 +4,9 @@ import { CommandStreams } from "../commands";
 import { writeBlobTask } from "../blob";
 import { buildVideoPath } from "./merger";
 import { Stream, periodic, fromPromise } from "most";
+import { tryCatch } from "fp-ts/lib/TaskEither";
 
-const getSources = new Task(
+export const getSources = new Task(
     () =>
         new Promise<Electron.DesktopCapturerSource[]>((res, rej) =>
             desktopCapturer.getSources(
@@ -13,6 +14,17 @@ const getSources = new Task(
                 (err, srcs) => (!!err ? rej : res(srcs))
             )
         )
+);
+
+export const getSourcesSafe = tryCatch<Error, Electron.DesktopCapturerSource[]>(
+    () =>
+        new Promise((res, rej) =>
+            desktopCapturer.getSources(
+                { types: ["window", "screen"] },
+                (err, srcs) => (!!err ? rej(err) : res(srcs))
+            )
+        ),
+    err => err as Error
 );
 
 const getVideoMedia = getSources.map(s => s[0]).chain(src => {

@@ -59,7 +59,7 @@ function start() {
         console.log("State", s);
     });
 
-    setTimeout(() => dispatch({ type: "INIT" }), 1500);
+    process.nextTick(() => dispatch({ type: "INIT" }));
 }
 
 const zipAudioVideoStreams = (a$: most.Stream<Task<string>>) => (b$: most.Stream<Task<string>>) =>

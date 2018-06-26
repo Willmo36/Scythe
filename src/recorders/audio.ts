@@ -1,5 +1,5 @@
 import { Task } from "fp-ts/lib/Task";
-import { TaskEither, right } from "fp-ts/lib/TaskEither";
+import { TaskEither, right, tryCatch } from "fp-ts/lib/TaskEither";
 import { fromNullable } from "fp-ts/lib/Either";
 import { create } from "@most/create";
 import { CommandStreams } from "../commands";
@@ -7,11 +7,14 @@ import { Stream, fromPromise } from "most";
 import * as path from "path";
 import { writeBlobTask } from "../blob";
 import { spy } from "fp-ts/lib/Trace";
-import { filter } from "ramda";
 
 type RecorderSetup = (streams: CommandStreams) => (ms: MediaStream) => Stream<Blob>;
 
 export const getAllAudioInfo = new Task(() => navigator.mediaDevices.enumerateDevices());
+export const getAllAudioInfoSafe = tryCatch(
+    () => navigator.mediaDevices.enumerateDevices(),
+    err => err as Error
+);
 export const getAudioInfo = new TaskEither<String, MediaDeviceInfo>(
     getAllAudioInfo
         .map(ds => ds.find(d => d.kind === "audioinput"))

@@ -1,31 +1,48 @@
 import { create } from "@most/create";
 import produce from "immer";
-import { OverlayState, Transition, isTransition, StateUpdate } from "../overlayState";
-import { getAllAudioInfo } from "../../recorders/audio";
-import { inProgress, completed, failed } from "../../domain/RemoteData";
 import { Stream } from "most";
+import { tryCatch } from "fp-ts/lib/Task";
+import * as Audio from "../../recorders/audio";
+import * as Video from "../../recorders/video2";
+import { inProgress, completed, failed } from "../../domain/RemoteData";
+import { OverlayState, Transition, isTransition, StateUpdate } from "../overlayState";
 
 const initHandler = (t: Transition) =>
     create<StateUpdate>(add => {
         add(
-            produce<OverlayState>(draft => {
-                draft.config.audio.devices = inProgress();
+            produce<OverlayState>(d => {
+                d.config.audio.devices = inProgress();
+                d.config.video.screens = inProgress();
             })
         );
 
-        getAllAudioInfo
-            .map(ds =>
-                produce<OverlayState>(draft => {
-                    draft.config.audio.devices = completed(ds);
-                })
+        Audio.getAllAudioInfoSafe
+            .bimap<StateUpdate, StateUpdate>(
+                err =>
+                    produce(d => {
+                        d.config.audio.devices = failed(err);
+                    }),
+                dcs =>
+                    produce(d => {
+                        d.config.audio.devices = completed(dcs);
+                    })
             )
-            .run()
-            .then(add)
-            .catch(err =>
-                produce<OverlayState>(d => {
-                    d.config.audio.devices = failed(err);
-                })
-            );
+            .fold(add, add)
+            .run();
+
+        Video.getSourcesSafe
+            .bimap<StateUpdate, StateUpdate>(
+                err =>
+                    produce(d => {
+                        d.config.video.screens = failed(err);
+                    }),
+                dcs =>
+                    produce(d => {
+                        d.config.video.screens = completed(dcs);
+                    })
+            )
+            .fold(add, add)
+            .run();
     });
 
 export const createInitHandler = (t$: Stream<Transition>): Stream<StateUpdate> =>
