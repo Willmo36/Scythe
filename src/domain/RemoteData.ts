@@ -47,7 +47,7 @@ export class Completed<A> {
         return whenCompleted(this.value);
     }
     map(fn: (a: A) => A) {
-        return completed(fn(a));
+        return completed(fn(this.value));
     }
 }
 

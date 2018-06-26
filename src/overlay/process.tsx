@@ -9,7 +9,13 @@ import { buildFFMPEGMergeAudioVideoCommand, execCommandIgnoreError } from "../re
 import { Overlay } from "../overlay/Overlay";
 import * as RS from "../domain/RecordState";
 import { create } from "@most/create";
-import { createDispatcher, isTransition, OverlayState, Transition } from "./overlayState";
+import {
+    createDispatcher,
+    isTransition,
+    OverlayState,
+    Transition,
+    createStateStream
+} from "./overlayState";
 import { equal } from "assert";
 import { equals } from "ramda";
 import produce from "immer";
@@ -44,6 +50,16 @@ function start() {
     //     )
     // );
     // merged.chain(runAll).run();
+
+    const { dispatch, transition$ } = createDispatcher();
+
+    const state$ = createStateStream(transition$);
+
+    state$.forEach(s => {
+        console.log("State", s);
+    });
+
+    setTimeout(() => dispatch({ type: "INIT" }), 1500);
 }
 
 const zipAudioVideoStreams = (a$: most.Stream<Task<string>>) => (b$: most.Stream<Task<string>>) =>

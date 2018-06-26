@@ -16,15 +16,14 @@ export type Config = {
 };
 
 export const initializeConfig = (): Config => ({
-        video: {
-            screens: notStarted<DesktopCapturerSource[]>(),
-            media: notStarted<MediaStream>()
-        },
-        audio: {
-            devices: notStarted<MediaDeviceInfo[]>(),
-            media: notStarted<MediaStream>()
-        },
-        outputPath: path.join(process.cwd(), `/output/`),
-        recordingLength: 10
-    }
+    video: {
+        screens: notStarted<DesktopCapturerSource[]>(),
+        media: notStarted<MediaStream>()
+    },
+    audio: {
+        devices: notStarted<MediaDeviceInfo[]>(),
+        media: notStarted<MediaStream>()
+    },
+    outputPath: path.join(process.cwd(), `/output/`),
+    recordingLength: 10
 });
