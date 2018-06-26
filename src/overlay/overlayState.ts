@@ -1,6 +1,7 @@
 import { Config, initializeConfig } from "../domain/config";
 import { Stream, merge, fromEvent } from "most";
 import { createInitHandler } from "./handlers/init";
+import { createUpdateConfigHandler } from "./handlers/updateConfig";
 import { EventEmitter } from "events";
 import { spy } from "fp-ts/lib/Trace";
 
@@ -9,12 +10,15 @@ export type OverlayState = {
 };
 
 export type StateUpdate = (o: OverlayState) => OverlayState;
+export type TransitionHandler = (t: Transition) => Stream<StateUpdate>;
 
 export const initializeState = (): OverlayState => ({
     config: initializeConfig()
 });
 
-export type Transition = { type: "INIT" };
+export type Transition =
+    | { type: "INIT" }
+    | { type: "UPDATE_CONFIG"; payload: (c: Config) => Config };
 
 //this isn't great but I don't understand most-subject yet
 export function createDispatcher() {
@@ -28,7 +32,7 @@ export const isTransition = (type: Transition["type"]) => (action: Transition) =
     action.type === type;
 
 export const createStateStream = (t$: Stream<Transition>): Stream<OverlayState> =>
-    merge(createInitHandler(t$))
+    merge(createInitHandler(t$), createUpdateConfigHandler(t$))
         .scan<OverlayState>((s, update) => update(s), initializeState())
         .startWith(initializeState())
         .skip(1);
