@@ -43,37 +43,60 @@ export const initializeConfigBuilder = (): ConfigBuilder => ({
 
 const { of, ap } = getApplicative(getArrayMonoid<string>());
 
-type ValidationBuilder = (
-    cb: ConfigBuilder
-) => Validation<string[], (vc: ValidateConfig) => ValidateConfig>;
+// type ValidationBuilder<T extends keyof Config> = (
+//     cb: ConfigBuilder
+// ) => Validation<string[], (p: Partial<Config>) => Partial<Config> & { T: Config[T] }>;
 
-const checkVideoScreens: ValidationBuilder = cb =>
-    cb.videoScreens
-        .fold<Validation<string[], DesktopCapturerSource[]>>(
+class ValidationBuilder<K extends keyof Config> {
+    constructor(
+        public validate: (cb: ConfigBuilder) => Validation<string[], Config[K]>,
+        private _append: <U>(myVal: Config[K]) => (prevVal: U) => U & Pick<Config, K>
+    ) {}
+
+    build<U>(
+        cb: ConfigBuilder,
+        prevVal: Validation<string[], U>
+    ): Validation<string[], U & Pick<Config, K>> {
+        return ap(this.validate(cb).map(myVal => this._append<U>(myVal)), prevVal);
+    }
+}
+
+const checkVideoScreens2 = new ValidationBuilder<"videoScreens">(
+    cb =>
+        cb.videoScreens.fold<Validation<string[], DesktopCapturerSource[]>>(
             () => failure(["Not started looking for screens"]),
             () => failure(["Looking for available screens..."]),
             s => of(s),
             () => failure(["Failed to find any screens"])
-        )
-        .map(vs => (vc: ValidateConfig): ValidateConfig => ({
-            ...vc,
-            videoScreens: right(vs)
-        }));
+        ),
+    videoScreens => <T>(prevVal: T) => Object.assign({}, prevVal, { videoScreens })
+);
 
-const checkAudioDevices: ValidationBuilder = cb =>
-    cb.audioDevices
-        .fold<Validation<string[], MediaDeviceInfo[]>>(
-            () => failure(["Not started looking for microphones"]),
-            () => failure(["Looking for available microphones..."]),
-            s => of(s),
-            () => failure(["Failed to find any microphones"])
-        )
-        .map(audioDevices => (vc: ValidateConfig): ValidateConfig => ({
-            ...vc,
-            audioDevices: right(audioDevices)
-        }));
+const checkVideoScreens = <T>(cb: ConfigBuilder, val: Validation<string[], T>) =>
+    ap(
+        cb.videoScreens
+            .fold<Validation<string[], DesktopCapturerSource[]>>(
+                () => failure(["Not started looking for screens"]),
+                () => failure(["Looking for available screens..."]),
+                s => of(s),
+                () => failure(["Failed to find any screens"])
+            )
+            .map(videoDevices => (partial: T) => Object.assign({}, partial, { videoDevices })),
+        val
+    );
 
-const checks: ValidationBuilder[] = [checkVideoScreens, checkAudioDevices];
+const checkAudioDevices = <T>(cb: ConfigBuilder, val: Validation<string[], T>) =>
+    ap(
+        cb.audioDevices
+            .fold<Validation<string[], MediaDeviceInfo[]>>(
+                () => failure(["Not started looking for microphones"]),
+                () => failure(["Looking for available microphones..."]),
+                s => of(s),
+                () => failure(["Failed to find any microphones"])
+            )
+            .map(audioDevices => (partial: T) => Object.assign({}, partial, { audioDevices })),
+        val
+    );
 
 export function validate(cb: ConfigBuilder) {
     const validateConfig: ValidateConfig = {
@@ -86,31 +109,8 @@ export function validate(cb: ConfigBuilder) {
     };
 
     const initialValidation = of(validateConfig);
-    const result = checks.reduce((acc, check) => ap(check(cb), acc), initialValidation);
+    const val1 = ap(checkVideoScreens(cb), of({}));
+    const val2 = checkAudioDevices(cb)(val1);
 }
 
-export const validateConfigToConfig = (vc: ValidateConfig): Either<string[], Config> =>
-    vc.videoScreens.chain(videoScreens =>
-        vc.videoMediaStream.chain(videoMediaStream =>
-            vc.audioDevices.chain(audioDevices =>
-                vc.audioMediaStream.chain(audioMediaStream =>
-                    vc.outputPath.chain(outputPath =>
-                        vc.recordingLength.chain(recordingLength =>
-                            right<string[], Config>({
-                                videoScreens,
-                                videoMediaStream,
-                                audioDevices,
-                                audioMediaStream,
-                                outputPath,
-                                recordingLength
-                            })
-                        )
-                    )
-                )
-            )
-        )
-    );
-
-export const validateConfigToConfig2 = (vc: ValidateConfig): Either<string[], Config> => {
-    vc.videoScreens.map(videoScreens => ({ videoScreens }));
-};
+export const validateConfigToConfig2 = (vc: ValidateConfig): Either<string[], Config> => {};
