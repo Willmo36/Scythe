@@ -6,14 +6,14 @@ import { EventEmitter } from "events";
 import { spy } from "fp-ts/lib/Trace";
 
 export type OverlayState = {
-    config: ConfigBuilder;
+    configBuilder: ConfigBuilder;
 };
 
 export type StateUpdate = (o: OverlayState) => OverlayState;
 export type TransitionHandler = (t: Transition) => Stream<StateUpdate>;
 
 export const initializeState = (): OverlayState => ({
-    config: initializeConfigBuilder()
+    configBuilder: initializeConfigBuilder()
 });
 
 export type Transition =
@@ -24,7 +24,7 @@ export type Transition =
 export function createDispatcher() {
     const ee = new EventEmitter();
     const dispatch = (t: Transition) => ee.emit("transition", t);
-    const transition$ = fromEvent<Transition>("transition", ee).tap(spy);
+    const transition$ = fromEvent<Transition>("transition", ee).multicast();
     return { dispatch, transition$ };
 }
 
@@ -35,4 +35,5 @@ export const createStateStream = (t$: Stream<Transition>): Stream<OverlayState> 
     merge(createInitHandler(t$), createUpdateConfigHandler(t$))
         .scan<OverlayState>((s, update) => update(s), initializeState())
         .startWith(initializeState())
-        .skip(1);
+        .skip(1)
+        .multicast();

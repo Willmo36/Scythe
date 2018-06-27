@@ -7,7 +7,7 @@ const updateConfigHandler: TransitionHandler = t => {
 
     return of(
         produce(d => {
-            d.config = t.payload(d.config);
+            d.configBuilder = t.payload(d.configBuilder);
         })
     );
 };

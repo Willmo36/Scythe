@@ -8,7 +8,7 @@ function createWindow() {
     // and load the index.html of the app.
 
     win.loadFile(path.join(__dirname, "../static/windows/overlay.html"));
-    // win.webContents.openDevTools();
+    win.webContents.openDevTools();
 
     globalShortcut.register("f8", () => {
         win.webContents.send("capture_start");

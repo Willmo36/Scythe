@@ -2,19 +2,26 @@ import * as React from "react";
 import { OverlayState } from "./overlayState";
 import { RemoteData } from "../domain/RemoteData";
 import { DesktopCapturerSource } from "electron";
+import { tryBuildConfig } from "../domain/config";
 
 export class Overlay extends React.Component<{ state: OverlayState }, {}> {
     render() {
+        const configVal = tryBuildConfig(this.props.state.configBuilder).fold(
+            msgs => <ConfigValidationMessages val={msgs} />,
+            () => null
+        );
+
         return (
             <div className="container font-sans bg-indigo p-1">
+                {configVal}
                 <div className="mb-4">
                     <label className="block text-sm font-bold mb-2">Screens</label>
-                    {listScreens(this.props.state.config.video.screens)}
+                    {listScreens(this.props.state.configBuilder.videoScreens)}
                 </div>
 
                 <div className="mb-4">
                     <label className="block text-sm font-bold mb-2">Screens</label>
-                    {listMicrophones(this.props.state.config.audio.devices)}
+                    {listMicrophones(this.props.state.configBuilder.audioDevices)}
                 </div>
             </div>
         );
@@ -54,3 +61,10 @@ const listMicrophones = (devices: RemoteData<MediaDeviceInfo[]>) =>
         ds => <MicrophoneList devices={ds} />,
         () => <p>Something went wrong</p>
     );
+
+const ConfigValidationMessages: React.SFC<{ val: string[] }> = props => (
+    <div className="bg-orange-lightest border-l-4 border-orange text-orange-dark p-4" role="alert">
+        <p className="font-bold">Config incomplete</p>
+        <ul>{props.val.map(msg => <li key={msg}>{msg}</li>)}</ul>
+    </div>
+);

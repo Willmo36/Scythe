@@ -2,7 +2,6 @@ import * as path from "path";
 import { DesktopCapturerSource } from "electron";
 import { Validation, failure, getApplicative } from "fp-ts/lib/Validation";
 import { getArrayMonoid } from "fp-ts/lib/Monoid";
-import { Either, left, right } from "fp-ts/lib/Either";
 import { RemoteData, notStarted } from "./RemoteData";
 
 export type Config = {
@@ -56,7 +55,7 @@ const checkVideoMediaStream = <T>(cb: ConfigBuilder, val: Validation<string[], T
     ap(
         cb.videoMediaStream
             .fold<Validation<string[], MediaStream>>(
-                () => failure(["Not started requesting video stream"]),
+                () => failure(["Waiting for screen to be chosen"]),
                 () => failure(["Requesting video stream..."]),
                 s => of(s),
                 () => failure(["Failed to get video stream"])
@@ -84,7 +83,7 @@ const checkAudioMediaStream = <T>(cb: ConfigBuilder, val: Validation<string[], T
     ap(
         cb.audioMediaStream
             .fold<Validation<string[], MediaStream>>(
-                () => failure(["Not started requesting microphone stream"]),
+                () => failure(["Waiting for microphone to be chosen"]),
                 () => failure(["Requesting microphone stream"]),
                 s => of(s),
                 () => failure(["Failed to get microphone stream"])
