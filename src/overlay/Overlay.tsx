@@ -26,7 +26,9 @@ export class Overlay extends React.Component<
 
                 <div className="mb-4">
                     <label className="block text-sm font-bold mb-2">Screens</label>
-                    {listMicrophones(this.props.state.configBuilder.audioDevices)}
+                    {listMicrophones(this.props.state.configBuilder.audioDevices, id =>
+                        this.props.dispatch({ type: "CHOOSE_AUDIO", payload: id })
+                    )}
                 </div>
             </div>
         );
@@ -59,20 +61,29 @@ const listScreens = (
         () => <p>Something went wrong</p>
     );
 
-const MicrophoneList: React.SFC<{ devices: MediaDeviceInfo[] }> = props =>
+const MicrophoneList: React.SFC<{
+    devices: MediaDeviceInfo[];
+    handleChange: (id: string) => void;
+}> = props =>
     props.devices.length === 0 ? (
         <p>No microphones found</p>
     ) : (
-        <select className="shadow border rounded w-full py-2 px-3 leading-tight">
+        <select
+            className="shadow border rounded w-full py-2 px-3 leading-tight"
+            onChange={e => props.handleChange(e.target.value)}
+        >
             {props.devices.map(d => <option value={d.deviceId}>{d.label}</option>)}
         </select>
     );
 
-const listMicrophones = (devices: RemoteData<MediaDeviceInfo[]>) =>
+const listMicrophones = (
+    devices: RemoteData<MediaDeviceInfo[]>,
+    handleChange: (id: string) => void
+) =>
     devices.fold(
         () => <p>Not yet started</p>,
         () => <p>Fetching screens</p>,
-        ds => <MicrophoneList devices={ds} />,
+        ds => <MicrophoneList devices={ds} handleChange={handleChange} />,
         () => <p>Something went wrong</p>
     );
 

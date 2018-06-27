@@ -5,6 +5,7 @@ import { createUpdateConfigHandler } from "./handlers/updateConfig";
 import { EventEmitter } from "events";
 import { spy } from "fp-ts/lib/Trace";
 import { createChooseScreenHandler } from "./handlers/chooseScreen";
+import { createChooseAudioHandler } from "./handlers/chooseAudio";
 
 export type OverlayState = {
     configBuilder: ConfigBuilder;
@@ -20,7 +21,8 @@ export const initializeState = (): OverlayState => ({
 export type Transition =
     | { type: "INIT" }
     | { type: "UPDATE_CONFIG"; payload: (c: ConfigBuilder) => ConfigBuilder }
-    | { type: "CHOOSE_SCREEN"; payload: string };
+    | { type: "CHOOSE_SCREEN"; payload: string }
+    | { type: "CHOOSE_AUDIO"; payload: string };
 
 //this isn't great but I don't understand most-subject yet
 export function createDispatcher() {
@@ -36,7 +38,12 @@ export const isTransition = (type: Transition["type"]) => (action: Transition) =
     action.type === type;
 
 export const createStateStream = (t$: Stream<Transition>): Stream<OverlayState> =>
-    merge(createInitHandler(t$), createUpdateConfigHandler(t$), createChooseScreenHandler(t$))
+    merge(
+        createInitHandler(t$),
+        createUpdateConfigHandler(t$),
+        createChooseScreenHandler(t$),
+        createChooseAudioHandler(t$)
+    )
         .scan<OverlayState>((s, update) => update(s), initializeState())
         .startWith(initializeState())
         .skip(1)

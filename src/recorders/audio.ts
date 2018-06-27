@@ -24,6 +24,12 @@ export const getAudioInfo = new TaskEither<String, MediaDeviceInfo>(
 const getAudioMedia = (info: MediaDeviceInfo) =>
     new Task(() => navigator.mediaDevices.getUserMedia({ audio: { deviceId: info.deviceId } }));
 
+export const getAudioMediaSafe = (id: string) =>
+    tryCatch(
+        () => navigator.mediaDevices.getUserMedia({ audio: { deviceId: id } }),
+        err => err as Error
+    );
+
 export const tryGetAudioMedia = getAudioInfo.map(getAudioMedia).chain(right);
 
 export const setupAudioRecording: RecorderSetup = commands => stream => {
