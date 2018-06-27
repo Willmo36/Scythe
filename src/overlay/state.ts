@@ -10,14 +10,17 @@ import { createInitHandler } from "./handlers/init";
 export type State = {
     configBuilder: ConfigBuilder;
     config: Option<Config>;
+    view: View;
 };
 
+export type View = "RecorderStatus" | "ConfigEditor";
 export type StateUpdate = (o: State) => State;
 export type TransitionHandler = (t: Transition) => Stream<StateUpdate>;
 
 export const initializeState = (): State => ({
     configBuilder: initializeConfigBuilder(),
-    config: none
+    config: none,
+    view: "ConfigEditor"
 });
 
 export type Transition =

@@ -9,6 +9,7 @@ const commitConfigHandler: TransitionHandler = t => {
     return of(
         produce(d => {
             d.config = some(t.payload);
+            d.view = "RecorderStatus";
         })
     );
 };
