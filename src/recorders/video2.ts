@@ -71,3 +71,8 @@ const setupRecorders = (cmds: CommandStreams) =>
 
 export const setup = (evs: CommandStreams) =>
     setupRecorders(evs).map(blob$ => blob$.map(writeBlobTask(buildVideoPath())));
+
+export const setup2 = (cmds: CommandStreams, ms: MediaStream) =>
+    createRecordingStream(ms)
+        .sampleWith(cmds.captureStart$)
+        .map(writeBlobTask(buildVideoPath()));

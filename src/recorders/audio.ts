@@ -82,3 +82,6 @@ const warn = console.warn.bind(console);
 
 const buildAudioPath = () =>
     path.join(process.cwd(), `/recording_tmp/audio_${Date.now().toString()}.webm`);
+
+export const setup2 = (cmds: CommandStreams, ms: MediaStream) =>
+    foo(cmds)(ms).map(writeBlobTask(buildAudioPath()));
