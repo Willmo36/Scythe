@@ -6,11 +6,21 @@
   <title>Hello World!</title>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss/dist/tailwind.min.css" rel="stylesheet">
   <style>
+    #drag {
+      -webkit-app-region: drag;
+      cursor: move;
+      height: 15px;
+    }
+
+    #drag:active {
+      cursor: -webkit-grabbing;
+    }
   </style>
 
 </head>
 
 <body>
+  <div id="drag" class="bg-indigo-darker"></div>
   <div id="app"></div>
   <script>
     require("../../dist/overlay/process.js")

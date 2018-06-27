@@ -17,17 +17,17 @@ export class ConfigEditor extends React.Component<
         );
 
         return (
-            <div className="container font-sans bg-indigo p-1">
+            <div className="font-sans text-grey-lighter bg-indigo-dark p-2 border-2 border-indigo-darker shadow-md">
                 <div className="mb-4">{configAction}</div>
                 <div className="mb-4">
-                    <label className="block text-sm font-bold mb-2">Choose window:</label>
+                    <label className="block text-sm mb-2">Choose window:</label>
                     {listScreens(this.props.state.configBuilder.videoScreens, id =>
                         this.props.dispatch({ type: "CHOOSE_SCREEN", payload: id })
                     )}
                 </div>
 
                 <div className="mb-4">
-                    <label className="block text-sm font-bold mb-2">Choose microphone:</label>
+                    <label className="block text-sm mb-2">Choose microphone:</label>
                     {listMicrophones(this.props.state.configBuilder.audioDevices, id =>
                         this.props.dispatch({ type: "CHOOSE_AUDIO", payload: id })
                     )}
@@ -45,7 +45,7 @@ const ScreenList: React.SFC<{
         <p>No screens found</p>
     ) : (
         <select
-            className="shadow border rounded w-full py-2 px-3 leading-tight"
+            className="shadow border rounded-sm w-full py-2 px-3 leading-tight"
             onChange={e => props.handleChange(e.target.value)}
         >
             {props.screens.map(sc => <option value={sc.id}>{sc.name}</option>)}
@@ -71,7 +71,7 @@ const MicrophoneList: React.SFC<{
         <p>No microphones found</p>
     ) : (
         <select
-            className="shadow border rounded w-full py-2 px-3 leading-tight"
+            className="shadow border rounded-sm w-full py-2 px-3 leading-tight"
             onChange={e => props.handleChange(e.target.value)}
         >
             {props.devices.map(d => <option value={d.deviceId}>{d.label}</option>)}
@@ -99,7 +99,7 @@ const ConfigValidationMessages: React.SFC<{ val: string[] }> = props => (
 const commitButton = (handleSubmit: () => void) => (
     <button
         onClick={handleSubmit}
-        className="bg-blue hover:bg-blue-dark text-white font-bold py-2 px-4 rounded"
+        className="bg-blue hover:bg-blue-dark text-white py-2 px-4 rounded"
         type="button"
     >
         Save & Restart
