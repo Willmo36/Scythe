@@ -9,23 +9,25 @@ export class Overlay extends React.Component<
     {}
 > {
     render() {
-        const configVal = tryBuildConfig(this.props.state.configBuilder).fold(
+        const configValidation = tryBuildConfig(this.props.state.configBuilder);
+        const configAction = configValidation.fold(
             msgs => <ConfigValidationMessages val={msgs} />,
-            () => null
+            config =>
+                commitButton(() => this.props.dispatch({ type: "COMMIT_CONFIG", payload: config }))
         );
 
         return (
             <div className="container font-sans bg-indigo p-1">
-                {configVal}
+                <div className="mb-4">{configAction}</div>
                 <div className="mb-4">
-                    <label className="block text-sm font-bold mb-2">Screens</label>
+                    <label className="block text-sm font-bold mb-2">Choose window:</label>
                     {listScreens(this.props.state.configBuilder.videoScreens, id =>
                         this.props.dispatch({ type: "CHOOSE_SCREEN", payload: id })
                     )}
                 </div>
 
                 <div className="mb-4">
-                    <label className="block text-sm font-bold mb-2">Screens</label>
+                    <label className="block text-sm font-bold mb-2">Choose microphone:</label>
                     {listMicrophones(this.props.state.configBuilder.audioDevices, id =>
                         this.props.dispatch({ type: "CHOOSE_AUDIO", payload: id })
                     )}
@@ -92,4 +94,14 @@ const ConfigValidationMessages: React.SFC<{ val: string[] }> = props => (
         <p className="font-bold">Config incomplete</p>
         <ul>{props.val.map(msg => <li key={msg}>{msg}</li>)}</ul>
     </div>
+);
+
+const commitButton = (handleSubmit: () => void) => (
+    <button
+        onClick={handleSubmit}
+        className="bg-blue hover:bg-blue-dark text-white font-bold py-2 px-4 rounded"
+        type="button"
+    >
+        Save & Restart
+    </button>
 );

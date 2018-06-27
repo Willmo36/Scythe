@@ -14,7 +14,8 @@ export const getAllAudioInfo = new Task(() => navigator.mediaDevices.enumerateDe
 export const getAllAudioInfoSafe = tryCatch(
     () => navigator.mediaDevices.enumerateDevices(),
     err => err as Error
-);
+).map(dis => dis.filter(di => di.kind === "audioinput"));
+
 export const getAudioInfo = new TaskEither<String, MediaDeviceInfo>(
     getAllAudioInfo
         .map(ds => ds.find(d => d.kind === "audioinput"))
