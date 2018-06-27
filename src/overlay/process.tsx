@@ -5,16 +5,10 @@ import { commands } from "../commands";
 import * as Video from "../recorders/video2";
 import * as Audio from "../recorders/audio";
 import { buildFFMPEGMergeAudioVideoCommand, execCommandIgnoreError } from "../recorders/merger";
-import { Overlay } from "../overlay/Overlay";
+import { ConfigEditor } from "../overlay/components/ConfigEditor";
 import * as RS from "../domain/RecordState";
 import { create } from "@most/create";
-import {
-    createDispatcher,
-    isTransition,
-    OverlayState,
-    Transition,
-    createStateStream
-} from "./overlayState";
+import { createDispatcher, isTransition, State, Transition, createStateStream } from "./state";
 import { equal } from "assert";
 import { equals } from "ramda";
 import produce from "immer";
@@ -28,9 +22,9 @@ function runAll<T>(task$: most.Stream<Task<T>>) {
     return new Task(() => task$.forEach(t => t.run()));
 }
 
-const updateUI = (dispatch: (t: Transition) => void) => (state: OverlayState) => {
+const updateUI = (dispatch: (t: Transition) => void) => (state: State) => {
     const appDiv = document.querySelector("#app")!;
-    ReactDOM.render(<Overlay state={state} dispatch={dispatch} />, appDiv);
+    ReactDOM.render(<ConfigEditor state={state} dispatch={dispatch} />, appDiv);
 };
 
 function start() {

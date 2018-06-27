@@ -3,14 +3,14 @@ import produce from "immer";
 import { Stream, empty } from "most";
 import * as Video from "../../recorders/video2";
 import { inProgress, completed, failed } from "../../domain/RemoteData";
-import { OverlayState, Transition, StateUpdate, TransitionHandler } from "../overlayState";
+import { State, Transition, StateUpdate, TransitionHandler } from "../state";
 
 const chooseScreenHandler: TransitionHandler = t =>
     t.type !== "CHOOSE_SCREEN"
         ? empty()
         : create<StateUpdate>(add => {
               add(
-                  produce<OverlayState>(d => {
+                  produce<State>(d => {
                       d.configBuilder.videoMediaStream = inProgress();
                   })
               );

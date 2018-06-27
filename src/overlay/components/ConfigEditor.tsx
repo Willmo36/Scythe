@@ -1,11 +1,11 @@
 import * as React from "react";
-import { OverlayState, Transition } from "./overlayState";
-import { RemoteData } from "../domain/RemoteData";
+import { State, Transition } from "../state";
+import { RemoteData } from "../../domain/RemoteData";
 import { DesktopCapturerSource } from "electron";
-import { tryBuildConfig } from "../domain/config";
+import { tryBuildConfig } from "../../domain/config";
 
-export class Overlay extends React.Component<
-    { state: OverlayState; dispatch: (t: Transition) => void },
+export class ConfigEditor extends React.Component<
+    { state: State; dispatch: (t: Transition) => void },
     {}
 > {
     render() {

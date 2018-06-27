@@ -1,6 +1,6 @@
 import produce from "immer";
 import { Stream, empty, of } from "most";
-import { Transition, StateUpdate, TransitionHandler } from "../overlayState";
+import { Transition, StateUpdate, TransitionHandler } from "../state";
 import { some } from "fp-ts/lib/Option";
 
 const commitConfigHandler: TransitionHandler = t => {

@@ -4,14 +4,14 @@ import { Stream, empty } from "most";
 import * as Audio from "../../recorders/audio";
 import * as Video from "../../recorders/video2";
 import { inProgress, completed, failed } from "../../domain/RemoteData";
-import { OverlayState, Transition, StateUpdate, TransitionHandler } from "../overlayState";
+import { State, Transition, StateUpdate, TransitionHandler } from "../state";
 
 const initHandler: TransitionHandler = t =>
     t.type !== "INIT"
         ? empty()
         : create<StateUpdate>(add => {
               add(
-                  produce<OverlayState>(d => {
+                  produce<State>(d => {
                       d.configBuilder.audioDevices = inProgress();
                       d.configBuilder.videoScreens = inProgress();
                   })

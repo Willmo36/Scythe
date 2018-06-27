@@ -1,22 +1,21 @@
-import { ConfigBuilder, initializeConfigBuilder, Config } from "../domain/config";
-import { Stream, merge, fromEvent } from "most";
-import { createInitHandler } from "./handlers/init";
-import { createCommitConfigHandler } from "./handlers/commitConfig";
 import { EventEmitter } from "events";
-import { spy } from "fp-ts/lib/Trace";
-import { createChooseScreenHandler } from "./handlers/chooseScreen";
+import { none, Option } from "fp-ts/lib/Option";
+import { fromEvent, merge, Stream } from "most";
+import { Config, ConfigBuilder, initializeConfigBuilder } from "../domain/config";
 import { createChooseAudioHandler } from "./handlers/chooseAudio";
-import { Option, none } from "fp-ts/lib/Option";
+import { createChooseScreenHandler } from "./handlers/chooseScreen";
+import { createCommitConfigHandler } from "./handlers/commitConfig";
+import { createInitHandler } from "./handlers/init";
 
-export type OverlayState = {
+export type State = {
     configBuilder: ConfigBuilder;
     config: Option<Config>;
 };
 
-export type StateUpdate = (o: OverlayState) => OverlayState;
+export type StateUpdate = (o: State) => State;
 export type TransitionHandler = (t: Transition) => Stream<StateUpdate>;
 
-export const initializeState = (): OverlayState => ({
+export const initializeState = (): State => ({
     configBuilder: initializeConfigBuilder(),
     config: none
 });
@@ -40,14 +39,14 @@ export function createDispatcher() {
 export const isTransition = (type: Transition["type"]) => (action: Transition) =>
     action.type === type;
 
-export const createStateStream = (t$: Stream<Transition>): Stream<OverlayState> =>
+export const createStateStream = (t$: Stream<Transition>): Stream<State> =>
     merge(
         createInitHandler(t$),
         createCommitConfigHandler(t$),
         createChooseScreenHandler(t$),
         createChooseAudioHandler(t$)
     )
-        .scan<OverlayState>((s, update) => update(s), initializeState())
+        .scan<State>((s, update) => update(s), initializeState())
         .startWith(initializeState())
         .skip(1)
         .multicast();

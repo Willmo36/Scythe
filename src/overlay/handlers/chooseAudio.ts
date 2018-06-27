@@ -3,14 +3,14 @@ import produce from "immer";
 import { Stream, empty } from "most";
 import * as Audio from "../../recorders/audio";
 import { inProgress, completed, failed } from "../../domain/RemoteData";
-import { OverlayState, Transition, StateUpdate, TransitionHandler } from "../overlayState";
+import { State, Transition, StateUpdate, TransitionHandler } from "../state";
 
 const chooseAudioHandler: TransitionHandler = t =>
     t.type !== "CHOOSE_AUDIO"
         ? empty()
         : create<StateUpdate>(add => {
               add(
-                  produce<OverlayState>(d => {
+                  produce<State>(d => {
                       d.configBuilder.audioMediaStream = inProgress();
                   })
               );
