@@ -41,6 +41,18 @@ const getVideoMedia = getSources.map(s => s[0]).chain(src => {
     return new Task(() => navigator.mediaDevices.getUserMedia(opts));
 });
 
+export const getVideoMediaSafe = (sourceId: string) =>
+    tryCatch<Error, MediaStream>(
+        () =>
+            navigator.mediaDevices.getUserMedia({
+                audio: false,
+                video: {
+                    mandatory: { chromeMediaSource: "desktop", chromeMediaSourceId: sourceId }
+                }
+            } as any),
+        err => err as Error
+    );
+
 const createRecorderPromise = (stream: MediaStream): Promise<Blob> =>
     new Promise(res => {
         const recorder = new MediaRecorder(stream, { mimeType: "video/webm;codecs=vp9" });

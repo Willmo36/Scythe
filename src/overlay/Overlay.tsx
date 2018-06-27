@@ -1,10 +1,13 @@
 import * as React from "react";
-import { OverlayState } from "./overlayState";
+import { OverlayState, Transition } from "./overlayState";
 import { RemoteData } from "../domain/RemoteData";
 import { DesktopCapturerSource } from "electron";
 import { tryBuildConfig } from "../domain/config";
 
-export class Overlay extends React.Component<{ state: OverlayState }, {}> {
+export class Overlay extends React.Component<
+    { state: OverlayState; dispatch: (t: Transition) => void },
+    {}
+> {
     render() {
         const configVal = tryBuildConfig(this.props.state.configBuilder).fold(
             msgs => <ConfigValidationMessages val={msgs} />,
@@ -16,7 +19,9 @@ export class Overlay extends React.Component<{ state: OverlayState }, {}> {
                 {configVal}
                 <div className="mb-4">
                     <label className="block text-sm font-bold mb-2">Screens</label>
-                    {listScreens(this.props.state.configBuilder.videoScreens)}
+                    {listScreens(this.props.state.configBuilder.videoScreens, id =>
+                        this.props.dispatch({ type: "CHOOSE_SCREEN", payload: id })
+                    )}
                 </div>
 
                 <div className="mb-4">
@@ -28,20 +33,29 @@ export class Overlay extends React.Component<{ state: OverlayState }, {}> {
     }
 }
 
-const ScreenList: React.SFC<{ screens: DesktopCapturerSource[] }> = props =>
+const ScreenList: React.SFC<{
+    screens: DesktopCapturerSource[];
+    handleChange: (id: string) => void;
+}> = props =>
     props.screens.length === 0 ? (
         <p>No screens found</p>
     ) : (
-        <select className="shadow border rounded w-full py-2 px-3 leading-tight">
+        <select
+            className="shadow border rounded w-full py-2 px-3 leading-tight"
+            onChange={e => props.handleChange(e.target.value)}
+        >
             {props.screens.map(sc => <option value={sc.id}>{sc.name}</option>)}
         </select>
     );
 
-const listScreens = (screens: RemoteData<DesktopCapturerSource[]>) =>
+const listScreens = (
+    screens: RemoteData<DesktopCapturerSource[]>,
+    handleChange: (id: string) => void
+) =>
     screens.fold(
         () => <p>Not yet started</p>,
         () => <p>Fetching screens</p>,
-        screens_ => <ScreenList screens={screens_} />,
+        screens_ => <ScreenList screens={screens_} handleChange={handleChange} />,
         () => <p>Something went wrong</p>
     );
 

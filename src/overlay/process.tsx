@@ -28,10 +28,10 @@ function runAll<T>(task$: most.Stream<Task<T>>) {
     return new Task(() => task$.forEach(t => t.run()));
 }
 
-function updateUI(state: OverlayState) {
+const updateUI = (dispatch: (t: Transition) => void) => (state: OverlayState) => {
     const appDiv = document.querySelector("#app")!;
-    ReactDOM.render(<Overlay state={state} />, appDiv);
-}
+    ReactDOM.render(<Overlay state={state} dispatch={dispatch} />, appDiv);
+};
 
 function start() {
     // const audio = Audio.setup(commands);
@@ -54,9 +54,9 @@ function start() {
 
     const { dispatch, transition$ } = createDispatcher();
 
-    const state$ = createStateStream(transition$.tap(spy));
+    const state$ = createStateStream(transition$);
 
-    state$.tap(spy).forEach(updateUI);
+    state$.tap(spy).forEach(updateUI(dispatch));
 
     process.nextTick(() => dispatch({ type: "INIT" }));
 }
