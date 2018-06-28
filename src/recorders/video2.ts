@@ -5,6 +5,19 @@ import { buildVideoPath } from "./merger";
 import { Stream, periodic, fromPromise } from "most";
 import { tryCatch } from "fp-ts/lib/TaskEither";
 
+const makeVideoConstraints = (id: string) => ({
+    audio: false,
+    video: {
+        mandatory: {
+            maxWidth: 1280,
+            maxHeight: 720,
+            maxFrameRate: 20,
+            chromeMediaSource: "desktop",
+            chromeMediaSourceId: id
+        }
+    }
+});
+
 export const getSourcesSafe = tryCatch<Error, Electron.DesktopCapturerSource[]>(
     () =>
         new Promise((res, rej) =>
@@ -18,13 +31,7 @@ export const getSourcesSafe = tryCatch<Error, Electron.DesktopCapturerSource[]>(
 
 export const getVideoMediaSafe = (sourceId: string) =>
     tryCatch<Error, MediaStream>(
-        () =>
-            navigator.mediaDevices.getUserMedia({
-                audio: false,
-                video: {
-                    mandatory: { chromeMediaSource: "desktop", chromeMediaSourceId: sourceId }
-                }
-            } as any),
+        () => navigator.mediaDevices.getUserMedia(makeVideoConstraints(sourceId) as any),
         err => err as Error
     );
 
@@ -34,7 +41,7 @@ const createRecorderPromise = (stream: MediaStream): Promise<Blob> =>
         recorder.ondataavailable = d => res(d.data);
         setTimeout(() => {
             recorder.stop();
-        }, 5000);
+        }, 10000);
         recorder.start();
     });
 

@@ -19,6 +19,7 @@ const chooseScreenHandler: TransitionHandler = t =>
                   .bimap<StateUpdate, StateUpdate>(
                       err =>
                           produce(d => {
+                              console.warn("THE ERRR", err);
                               d.configBuilder.videoMediaStream = failed(err);
                           }),
                       ms =>
