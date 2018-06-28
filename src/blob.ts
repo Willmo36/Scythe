@@ -23,6 +23,11 @@ export const writeBlobs = (ext: string) => (blobs: Blob[]): Task<void> =>
             });
     });
 
+export const combineBlobs = (blobs: Blob[]) =>
+    sequencePromiseArray(blobs.map(toArrayBuffer).map(b => b.then(toTypedArray))).then(arrs =>
+        arrs.reduce(appendUnit8Array, new Uint8Array(0))
+    );
+
 export const writeBlobTask = (path: string) => (blob: Blob): Task<string> =>
     new Task(() => toArrayBuffer(blob)).map(toTypedArray).chain(writeFileTask(path));
 
@@ -30,6 +35,9 @@ export const writeFileTask = (p: string) => (d: Uint8Array): Task<string> =>
     new Task(
         () => new Promise<string>((res, rej) => fs.writeFile(p, d, e => (!!e ? rej(e) : res(p))))
     );
+
+export const writeFile2 = (p: string, d: Uint8Array): Promise<string> =>
+    new Promise((res, rej) => fs.writeFile(p, d, e => (!!e ? rej(e) : res(p))));
 
 function toArrayBuffer(blob: Blob): Promise<ArrayBuffer> {
     return new Promise<ArrayBuffer>((resolve, reject) => {

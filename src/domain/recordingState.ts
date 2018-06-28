@@ -10,7 +10,7 @@ import { logWith } from "../utils/log";
 export type RecordingEvent = { type: "RESULT"; payload: string };
 
 export function start(commands: CommandStreams, config: Config): Stream<RecordingEvent> {
-    const videoResult$ = Video.setup(commands, config.videoMediaStream);
+    const videoResult$ = Video.setup2(commands, config.videoMediaStream);
     const audioResult$ = Audio.setup(commands, config.audioMediaStream);
     const videoAudio$ = zipTaskStreams(videoResult$, audioResult$, mergeAudioVideoPaths);
     const output$ = videoAudio$
