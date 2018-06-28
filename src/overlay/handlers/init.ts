@@ -2,7 +2,7 @@ import { create } from "@most/create";
 import produce from "immer";
 import { Stream, empty } from "most";
 import * as Audio from "../../recorders/audio";
-import * as Video from "../../recorders/video2";
+import * as Video from "../../recorders/video";
 import { inProgress, completed, failed } from "../../domain/RemoteData";
 import { State, Transition, StateUpdate, TransitionHandler } from "../state";
 

@@ -1,18 +1,24 @@
-import { Stream, fromPromise } from "most";
+import { Stream, fromPromise, zip } from "most";
 import { Config } from "./config";
 import * as Audio from "../recorders/audio";
-import * as Video from "../recorders/video2";
+import * as Video from "../recorders/video";
 import { CommandStreams } from "../commands";
 import { zipTaskStreams } from "../utils/task";
-import { execCommandIgnoreError, buildFFMPEGMergeAudioVideoCommand } from "../recorders/merger";
-import { logWith } from "../utils/log";
+import { execCommandIgnoreError, makeMergeAuidoVideoCommand } from "../recorders/merger";
 
 export type RecordingEvent = { type: "RESULT"; payload: string };
 
 export function start(commands: CommandStreams, config: Config): Stream<RecordingEvent> {
-    const videoResult$ = Video.setup2(commands, config.videoMediaStream);
+    const videoResult$ = Video.singleRecorderInMemorySetup(commands, config.videoMediaStream);
     const audioResult$ = Audio.setup(commands, config.audioMediaStream);
-    const videoAudio$ = zipTaskStreams(videoResult$, audioResult$, mergeAudioVideoPaths);
+    const videoAudio$ = zipTaskStreams(
+        video => audio => ({
+            video,
+            audio
+        }),
+        videoResult$,
+        audioResult$
+    );
     const output$ = videoAudio$
         .map(pathsT => pathsT.chain(mergeAudoVideoFiles))
         .chain(task => fromPromise(task.run()))
@@ -21,7 +27,5 @@ export function start(commands: CommandStreams, config: Config): Stream<Recordin
     return output$;
 }
 
-const mergeAudioVideoPaths = (video: string) => (audio: string) => ({ audio, video });
-
 const mergeAudoVideoFiles = (paths: { audio: string; video: string }) =>
-    execCommandIgnoreError(buildFFMPEGMergeAudioVideoCommand(paths.video, paths.audio));
+    execCommandIgnoreError(makeMergeAuidoVideoCommand(paths.video, paths.audio));

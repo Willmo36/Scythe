@@ -13,7 +13,7 @@ export const buildVideoPath = () =>
 export const buildVideoPartPath = (i: number) =>
     path.join(process.cwd(), `/recording_tmp/video_part_${i}_${Date.now().toString()}.webm`);
 
-export const buildFFMPEGMergeAudioVideoCommand = (vPath: string, aPath: string) =>
+export const makeMergeAuidoVideoCommand = (vPath: string, aPath: string) =>
     `${
         ffmpegStatic.path
     } -i ${vPath} -i ${aPath} -vcodec copy -acodec copy -strict -2 ${buildOutputPath()}`;

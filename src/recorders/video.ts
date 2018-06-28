@@ -1,77 +1,144 @@
-import { Task } from "fp-ts/lib/Task";
 import { desktopCapturer } from "electron";
-import { Stream } from "most";
+import { Task, task } from "fp-ts/lib/Task";
+import { tryCatch } from "fp-ts/lib/TaskEither";
+import { fromPromise, periodic, Stream } from "most";
+import { writeBlobTask, combineBlobs, writeFile2 } from "../blob";
 import { CommandStreams } from "../commands";
-import * as LRU from "../LRU";
-import { writeBlobTask } from "../blob";
-import { sequenceTaskArray } from "../utils/task";
+import { create, insert } from "../lru";
+import { logWith } from "../utils/log";
 import {
+    buildVideoPath,
     buildMergePartsCommand,
     execCommandIgnoreError,
-    buildVideoPath,
     buildVideoPartPath
 } from "./merger";
-import { spy, traceM } from "fp-ts/lib/Trace";
-import { logWith } from "../utils/log";
+import { sequenceTaskArray } from "../utils/task";
 
-type RecorderSetup = (streams: CommandStreams) => (ms: MediaStream) => Stream<Blob[]>;
-
-const getSources = new Task(
-    () =>
-        new Promise<Electron.DesktopCapturerSource[]>((res, rej) =>
-            desktopCapturer.getSources(
-                { types: ["window", "screen"] },
-                (err, srcs) => (!!err ? rej : res(srcs))
-            )
-        )
-);
-
-const getVideoMedia = getSources.map(s => s[0]).chain(src => {
-    const opts: any = {
-        audio: false,
-        video: {
-            mandatory: {
-                chromeMediaSource: "desktop",
-                chromeMediaSourceId: src.id
-            }
+const makeVideoConstraints = (id: string) => ({
+    audio: false,
+    video: {
+        mandatory: {
+            maxWidth: 1280,
+            maxHeight: 720,
+            maxFrameRate: 20,
+            chromeMediaSource: "desktop",
+            chromeMediaSourceId: id
         }
-    };
-
-    return new Task(() => navigator.mediaDevices.getUserMedia(opts));
+    }
 });
 
-const setupVideoRecording: RecorderSetup = commands => stream => {
-    let blobCache: LRU.LRU<Blob> = LRU.create(15, []);
-    const recorder = new MediaRecorder(stream, {
-        bitsPerSecond: 100000,
-        mimeType: "video/webm;codecs=vp9"
+export const getSourcesSafe = tryCatch<Error, Electron.DesktopCapturerSource[]>(
+    () =>
+        new Promise((res, rej) =>
+            desktopCapturer.getSources(
+                { types: ["window", "screen"] },
+                (err, srcs) => (!!err ? rej(err) : res(srcs))
+            )
+        ),
+    err => err as Error
+);
+
+export const getVideoMediaSafe = (sourceId: string) =>
+    tryCatch<Error, MediaStream>(
+        () => navigator.mediaDevices.getUserMedia(makeVideoConstraints(sourceId) as any),
+        err => err as Error
+    );
+
+/**
+ * Create a MediaRecorder which emits a Blob after n seconds
+ */
+const createRecorderPromise = (stream: MediaStream): Promise<Blob> =>
+    new Promise(res => {
+        const recorder = new MediaRecorder(stream, { mimeType: "video/webm;codecs=vp9" });
+        recorder.ondataavailable = d => res(d.data);
+        setTimeout(() => {
+            recorder.stop();
+        }, 10000); //todo parameterize
+        recorder.start();
     });
 
-    recorder.ondataavailable = d => {
-        console.info("LRU size", blobCache.queue.length);
-        blobCache = LRU.insert(blobCache, d.data);
+/**
+ * Create a new MediaRecorder every n second, outputing results via a single stream
+ */
+const createRecordingStream = (stream: MediaStream): Stream<Blob> =>
+    periodic(1000)
+        .take(1)
+        .chain(() => fromPromise(createRecorderPromise(stream)));
+
+/**
+ * Setup via multiple MediaRecorder approach
+ * WARNING very resource intensive!
+ */
+export const multiRecorderSetup = (cmds: CommandStreams, ms: MediaStream): Stream<Task<string>> =>
+    createRecordingStream(ms)
+        .sampleWith(cmds.captureStart$)
+        .map(writeBlobTask(buildVideoPath()));
+
+/**
+ * Setup via a single MediaRecorder, combining the blobs in memory
+ */
+export const singleRecorderInMemorySetup = (cmds: CommandStreams, ms: MediaStream) =>
+    createMovingRecorder(cmds, ms)
+        .chain(bs => fromPromise(combineBlobs(bs)))
+        .chain(arr => fromPromise(writeFile2(buildVideoPath(), arr)))
+        .map(task.of); //temp, gonna need to wrap the above steps in tasks
+
+/**
+ * Setup via a single MediaRecorder, persisting each blob then using FFMPEG to merge
+ */
+export const singleRecorderViaDiskSetup = (cmds: CommandStreams, ms: MediaStream) =>
+    createMovingRecorder(cmds, ms)
+        .chain(addHeadBlob(ms))
+        .map(combineBlobParts);
+
+/**
+ * Create a head blob and prepend it to the blobs from a single MediaStream
+ */
+const addHeadBlob = (ms: MediaStream) => (bs: Blob[]): Stream<Blob[]> =>
+    createHeadBlob(ms).map(headBlob => [headBlob, ...bs]);
+
+/**
+ * Create a MediaRecorder for a single (tiny) blob. This blob will contain WebM metadata
+ */
+const createHeadBlob = (ms: MediaStream): Stream<Blob> =>
+    fromPromise(
+        new Promise(res => {
+            const rec = new MediaRecorder(ms, { mimeType: "video/webm;codecs=vp9" });
+            rec.ondataavailable = d => res(d.data);
+            setTimeout(() => {
+                rec.stop();
+            }, 150);
+            rec.start();
+        })
+    );
+
+/**
+ * 15x1s blobs in an LRU cache via a single MediaRecorder
+ * Dumps data on captureStart$ request
+ */
+const createMovingRecorder = (cmds: CommandStreams, ms: MediaStream) => {
+    let blobs = create<Blob>(5, []);
+    const rec = new MediaRecorder(ms, { mimeType: "video/webm;codecs=vp9" });
+    rec.ondataavailable = d => {
+        blobs = insert(blobs, d.data);
     };
+    rec.start();
+    //tried requestData and start(1000), no difference
+    setInterval(() => rec.requestData(), 1000);
 
-    recorder.onerror = e => console.error("error", e);
-    recorder.onstop = () => console.warn("stopped");
-    recorder.start(1000);
-
-    return commands.captureStart$.map(() => blobCache.queue);
+    return cmds.captureStart$.map(() => blobs.queue);
 };
 
-export const setup = (evs: CommandStreams) =>
-    getVideoMedia.map(setupVideoRecording(evs)).map(blobs$ => blobs$.map(combineBlobParts));
-
+/**
+ * Write each blob to disk before using FFMPEG to merge them
+ */
 export const combineBlobParts = (bs: Blob[]): Task<string> => {
-    console.info(`${bs.length} parts to write`);
     const fullPath = buildVideoPath();
     const partPaths = sequenceTaskArray(bs.map((b, i) => writeBlobTask(buildVideoPartPath(i))(b)));
     const fullClipPath = partPaths
-        .map(logWith("Parts written"))
         .map(buildMergePartsCommand(fullPath))
-        .map(logWith("Command to exec: "))
         .chain(execCommandIgnoreError)
-        .map(logWith("Command ran"))
+        .map(logWith("Command ran:"))
         .map(() => fullPath);
 
     return fullClipPath;

@@ -1,17 +1,26 @@
-import { Task, task } from "fp-ts/lib/Task";
+import { Apply1 } from "fp-ts/lib/Apply";
+import { Type, URIS } from "fp-ts/lib/HKT";
+import { task } from "fp-ts/lib/Task";
+import { Stream, zip } from "most";
 import { append } from "ramda";
-import { Stream, zip, fromPromise } from "most";
+import { Applicative1 } from "fp-ts/lib/Applicative";
 
-export const sequenceTaskArray = <T>(ts: Task<T>[]): Task<T[]> =>
-    ts.reduce((acc, t) => {
-        const y = t.map(x => (ts: T[]) => append(x, ts));
-        return acc.ap(y);
-    }, task.of<T[]>([]));
+export const sequenceApplicativeArray = <F extends URIS>(A: Applicative1<F>) => <A>(
+    as: Type<F, A>[]
+): Type<F, A[]> => {
+    const empty = A.of<A[]>([]);
+    return as.reduce((fas, fa) => {
+        const fab = A.map(fa, a => (as: A[]) => append(a, as));
+        return A.ap(fab, fas);
+    }, empty);
+};
 
-export const zipTaskStreams = <T, U>(
-    a$: Stream<Task<T>>,
-    b$: Stream<Task<T>>,
-    mergeFn: (a: T) => (b: T) => U
-) => zip((a, b) => b.ap(a.map(mergeFn)), a$, b$);
+//heavily following https://github.com/gcanti/fp-ts/blob/master/HKT.md
+export const zipApplyStreams = <F extends URIS>(A: Apply1<F>) => <T1, T2, U>(
+    zipper: (a: T1) => (b: T2) => U,
+    a$: Stream<Type<F, T1>>,
+    b$: Stream<Type<F, T2>>
+) => zip((fa, fb) => A.ap(A.map(fa, zipper), fb), a$, b$);
 
-export const runAsStream = <T>(task: Task<T>): Stream<T> => fromPromise(task.run());
+export const zipTaskStreams = zipApplyStreams(task);
+export const sequenceTaskArray = sequenceApplicativeArray(task);
