@@ -59,12 +59,15 @@ export const setup = (cmds: CommandStreams, ms: MediaStream): Stream<Task<string
         .map(writeBlobTask(buildVideoPath()));
 
 export const setup2 = (cmds: CommandStreams, ms: MediaStream) =>
-    fromPromise(createHeadBlob(ms))
-        .tap(logWith("head blob"))
-        .chain(headBlob => createMovingRecorder(cmds, ms).map(bs => [headBlob, ...bs]))
-        .tap(logWith("all blobs"))
+    createMovingRecorder(cmds, ms)
+        .chain(bs =>
+            fromPromise(createHeadBlob(ms))
+                .map(head => [head, ...bs])
+                .tap(logWith("head blob"))
+        )
         .chain(bs => fromPromise(combineBlobs(bs)))
-        .chain(data => fromPromise(writeFile2(buildVideoPath(), data)))
+        .tap(logWith("all blobs"))
+        .chain(bs => fromPromise(writeFile2(buildVideoPath(), bs)))
         .tap(logWith("path"))
         .map(task.of); //temp, gonna need to wrap the above steps in tasks
 
