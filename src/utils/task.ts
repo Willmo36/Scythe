@@ -1,6 +1,6 @@
 import { Task, task } from "fp-ts/lib/Task";
 import { append } from "ramda";
-import { Stream, zip } from "most";
+import { Stream, zip, fromPromise } from "most";
 
 export const sequenceTaskArray = <T>(ts: Task<T>[]): Task<T[]> =>
     ts.reduce((acc, t) => {
@@ -13,3 +13,5 @@ export const zipTaskStreams = <T, U>(
     b$: Stream<Task<T>>,
     mergeFn: (a: T) => (b: T) => U
 ) => zip((a, b) => b.ap(a.map(mergeFn)), a$, b$);
+
+export const runAsStream = <T>(task: Task<T>): Stream<T> => fromPromise(task.run());

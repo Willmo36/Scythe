@@ -6,6 +6,7 @@ declare class MediaRecorder {
     ondataavailable(e: BlobEvent): void;
     onerror(e: Error): void;
     onstop(): void;
+    requestData(): void;
 }
 
 interface BlobEvent {

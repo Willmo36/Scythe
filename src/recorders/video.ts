@@ -62,7 +62,7 @@ const setupVideoRecording: RecorderSetup = commands => stream => {
 export const setup = (evs: CommandStreams) =>
     getVideoMedia.map(setupVideoRecording(evs)).map(blobs$ => blobs$.map(combineBlobParts));
 
-const combineBlobParts = (bs: Blob[]): Task<string> => {
+export const combineBlobParts = (bs: Blob[]): Task<string> => {
     console.info(`${bs.length} parts to write`);
     const fullPath = buildVideoPath();
     const partPaths = sequenceTaskArray(bs.map((b, i) => writeBlobTask(buildVideoPartPath(i))(b)));
