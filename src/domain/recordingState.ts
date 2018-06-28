@@ -5,12 +5,13 @@ import * as Video from "../recorders/video2";
 import { CommandStreams } from "../commands";
 import { zipTaskStreams } from "../utils/task";
 import { execCommandIgnoreError, buildFFMPEGMergeAudioVideoCommand } from "../recorders/merger";
+import { logWith } from "../utils/log";
 
 export type RecordingEvent = { type: "RESULT"; payload: string };
 
 export function start(commands: CommandStreams, config: Config): Stream<RecordingEvent> {
-    const videoResult$ = Video.setup2(commands, config.videoMediaStream);
-    const audioResult$ = Audio.setup2(commands, config.audioMediaStream);
+    const videoResult$ = Video.setup(commands, config.videoMediaStream);
+    const audioResult$ = Audio.setup(commands, config.audioMediaStream);
     const videoAudio$ = zipTaskStreams(videoResult$, audioResult$, mergeAudioVideoPaths);
     const output$ = videoAudio$
         .map(pathsT => pathsT.chain(mergeAudoVideoFiles))

@@ -1,16 +1,19 @@
 import { EventEmitter } from "events";
 import { none, Option } from "fp-ts/lib/Option";
-import { fromEvent, merge, Stream } from "most";
+import { fromEvent, merge, Stream, Subscription } from "most";
 import { Config, ConfigBuilder, initializeConfigBuilder } from "../domain/config";
 import { createChooseAudioHandler } from "./handlers/chooseAudio";
 import { createChooseScreenHandler } from "./handlers/chooseScreen";
 import { createCommitConfigHandler } from "./handlers/commitConfig";
 import { createInitHandler } from "./handlers/init";
+import { RecordingEvent } from "../domain/recordingState";
+import { commands } from "../commands";
 
 export type State = {
     configBuilder: ConfigBuilder;
     config: Option<Config>;
     view: View;
+    recordingSubscription: Option<Subscription<RecordingEvent>>;
 };
 
 export type View = "RecorderStatus" | "ConfigEditor";
@@ -20,7 +23,8 @@ export type TransitionHandler = (t: Transition) => Stream<StateUpdate>;
 export const initializeState = (): State => ({
     configBuilder: initializeConfigBuilder(),
     config: none,
-    view: "ConfigEditor"
+    view: "ConfigEditor",
+    recordingSubscription: none
 });
 
 export type Transition =
@@ -45,7 +49,7 @@ export const isTransition = (type: Transition["type"]) => (action: Transition) =
 export const createStateStream = (t$: Stream<Transition>): Stream<State> =>
     merge(
         createInitHandler(t$),
-        createCommitConfigHandler(t$),
+        createCommitConfigHandler(commands, t$),
         createChooseScreenHandler(t$),
         createChooseAudioHandler(t$)
     )
