@@ -1,8 +1,8 @@
 import { tryCatch } from "fp-ts/lib/TaskEither";
 import { CommandStreams } from "../commands";
 import { fromPromise } from "most";
-import * as path from "path";
-import { writeBlobTask } from "../../utils/blob";
+import { writeBlobSafe } from "../../utils/blob";
+import { buildAudioPath } from "../pathBuilders";
 
 export const getAllAudioInfoSafe = tryCatch(
     () => navigator.mediaDevices.enumerateDevices(),
@@ -15,7 +15,7 @@ export const getAudioMediaSafe = (id: string) =>
         err => err as Error
     );
 
-const createRecordingStream = (cmds: CommandStreams) => (stream: MediaStream) =>
+const createRecordingStream = (cmds: CommandStreams, stream: MediaStream) =>
     cmds.captureStart$.chain(() => {
         const recorder = new MediaRecorder(stream, {
             bitsPerSecond: 128000,
@@ -34,8 +34,5 @@ const createRecordingStream = (cmds: CommandStreams) => (stream: MediaStream) =>
             .chain(() => fromPromise(dataAvailable));
     });
 
-const buildAudioPath = () =>
-    path.join(process.cwd(), `/recording_tmp/audio_${Date.now().toString()}.webm`);
-
 export const setup = (cmds: CommandStreams, ms: MediaStream) =>
-    createRecordingStream(cmds)(ms).map(writeBlobTask(buildAudioPath()));
+    createRecordingStream(cmds, ms).map(writeBlobSafe(buildAudioPath()));

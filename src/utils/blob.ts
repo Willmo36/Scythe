@@ -1,43 +1,38 @@
-import * as path from "path";
 import * as fs from "fs";
 import { Task } from "fp-ts/lib/Task";
 import { sequencePromiseArray } from "./promise";
+import { taskify, TaskEither, taskEither, tryCatch } from "fp-ts/lib/TaskEither";
+import { sequenceTaskEitherArray } from "./task";
 
-export const writeBlobs = (ext: string) => (blobs: Blob[]): Task<void> =>
-    new Task(() => {
-        const p = path.join(__dirname, `../recordings/${Date.now().toString()}.${ext}`);
-        const rawBlobs = blobs.map(toArrayBuffer).map(pb => pb.then(toTypedArray));
-        return sequencePromiseArray(rawBlobs)
-            .then(bs => bs.reduce(appendUnit8Array, new Uint8Array(0)))
-            .then(
-                b =>
-                    new Promise<void>((res, rej) => fs.writeFile(p, b, e => (!!e ? rej(e) : res())))
-            )
-            .then(x => {
-                console.info("Write complete");
-
-                //temp do the ffmpeg thingy here
-                //then change video/audio apis to return a stream instead of a Task
-
-                return x;
-            });
-    });
-
-export const combineBlobs = (blobs: Blob[]) =>
+export const concatBlobs = (blobs: Blob[]) =>
     sequencePromiseArray(blobs.map(toArrayBuffer).map(b => b.then(toTypedArray))).then(arrs =>
         arrs.reduce(appendUnit8Array, new Uint8Array(0))
     );
 
-export const writeBlobTask = (path: string) => (blob: Blob): Task<string> =>
-    new Task(() => toArrayBuffer(blob)).map(toTypedArray).chain(writeFileTask(path));
-
-export const writeFileTask = (p: string) => (d: Uint8Array): Task<string> =>
-    new Task(
-        () => new Promise<string>((res, rej) => fs.writeFile(p, d, e => (!!e ? rej(e) : res(p))))
+export const concatBlobsSafe = (bs: Blob[]): TaskEither<Error, Uint8Array> =>
+    sequenceTaskEitherArray(bs.map(b => toArrayBufferSafe(b).map(toTypedArray))).map(arrs =>
+        arrs.reduce(appendUnit8Array, new Uint8Array(0))
     );
 
-export const writeFile2 = (p: string, d: Uint8Array): Promise<string> =>
+export const writeBlobTask = (path: string) => (blob: Blob): Task<string> =>
+    new Task(() => toArrayBuffer(blob)).map(toTypedArray).chain(writeUnit8ArrayTask(path));
+
+export const writeUnit8ArrayTask = (p: string) => (d: Uint8Array): Task<string> =>
+    new Task(() => writeUnit8Array(p, d));
+
+export const writeUnit8Array = (p: string, d: Uint8Array): Promise<string> =>
     new Promise((res, rej) => fs.writeFile(p, d, e => (!!e ? rej(e) : res(p))));
+
+const write_ = taskify(fs.writeFile);
+export const writeSafe = (path: string) => (data: Uint8Array) =>
+    write_(path, data)
+        .mapLeft(err => err as Error) //just for now
+        .map(() => path);
+
+export const writeBlobSafe = (path: string) => (blob: Blob) =>
+    toArrayBufferSafe(blob)
+        .map(toTypedArray)
+        .chain(writeSafe(path));
 
 function toArrayBuffer(blob: Blob): Promise<ArrayBuffer> {
     return new Promise<ArrayBuffer>((resolve, reject) => {
@@ -52,6 +47,10 @@ function toArrayBuffer(blob: Blob): Promise<ArrayBuffer> {
         };
         fileReader.readAsArrayBuffer(blob);
     });
+}
+
+export function toArrayBufferSafe(blob: Blob): TaskEither<Error, ArrayBuffer> {
+    return tryCatch(() => toArrayBuffer(blob), err => err as Error);
 }
 
 function toTypedArray(ab: ArrayBuffer) {

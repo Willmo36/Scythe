@@ -1,13 +1,12 @@
 import { desktopCapturer } from "electron";
-import { Task, task } from "fp-ts/lib/Task";
-import { tryCatch } from "fp-ts/lib/TaskEither";
+import { TaskEither, tryCatch } from "fp-ts/lib/TaskEither";
 import { fromPromise, periodic, Stream } from "most";
 import { create, insert } from "../../lru";
-import { combineBlobs, writeBlobTask, writeFile2 } from "../../utils/blob";
+import { writeBlobSafe, concatBlobsSafe, writeSafe } from "../../utils/blob";
 import { logWith } from "../../utils/log";
-import { sequenceTaskArray } from "../../utils/task";
+import { sequenceTaskEitherArray } from "../../utils/task";
 import { CommandStreams } from "../commands";
-import { buildMergePartsCommand, execCommandIgnoreError } from "../ffmpegCommands";
+import { buildMergePartsCommand, execCommandIgnoreErrorSafe } from "../ffmpegCommands";
 import { buildVideoPartPath, buildVideoPath } from "../pathBuilders";
 
 const makeVideoConstraints = (id: string) => ({
@@ -65,24 +64,32 @@ const createRecordingStream = (stream: MediaStream): Stream<Blob> =>
  * Setup via multiple MediaRecorder approach
  * WARNING very resource intensive!
  */
-export const multiRecorderSetup = (cmds: CommandStreams, ms: MediaStream): Stream<Task<string>> =>
+export const multiRecorderSetup = (
+    cmds: CommandStreams,
+    ms: MediaStream
+): Stream<TaskEither<Error, string>> =>
     createRecordingStream(ms)
         .sampleWith(cmds.captureStart$)
-        .map(writeBlobTask(buildVideoPath()));
+        .map(writeBlobSafe(buildVideoPath()));
 
 /**
  * Setup via a single MediaRecorder, combining the blobs in memory
  */
-export const singleRecorderInMemorySetup = (cmds: CommandStreams, ms: MediaStream) =>
+export const singleRecorderInMemorySetup = (
+    cmds: CommandStreams,
+    ms: MediaStream
+): Stream<TaskEither<Error, string>> =>
     createMovingRecorder(cmds, ms)
-        .chain(bs => fromPromise(combineBlobs(bs)))
-        .chain(arr => fromPromise(writeFile2(buildVideoPath(), arr)))
-        .map(task.of); //temp, gonna need to wrap the above steps in tasks
+        .map(concatBlobsSafe)
+        .map(t => t.chain(writeSafe(buildVideoPath())));
 
 /**
  * Setup via a single MediaRecorder, persisting each blob then using FFMPEG to merge
  */
-export const singleRecorderViaDiskSetup = (cmds: CommandStreams, ms: MediaStream) =>
+export const singleRecorderViaDiskSetup = (
+    cmds: CommandStreams,
+    ms: MediaStream
+): Stream<TaskEither<Error, string>> =>
     createMovingRecorder(cmds, ms)
         .chain(addHeadBlob(ms))
         .map(combineBlobParts);
@@ -128,12 +135,14 @@ const createMovingRecorder = (cmds: CommandStreams, ms: MediaStream) => {
 /**
  * Write each blob to disk before using FFMPEG to merge them
  */
-export const combineBlobParts = (bs: Blob[]): Task<string> => {
+export const combineBlobParts = (bs: Blob[]): TaskEither<Error, string> => {
     const fullPath = buildVideoPath();
-    const partPaths = sequenceTaskArray(bs.map((b, i) => writeBlobTask(buildVideoPartPath(i))(b)));
+    const partPaths = sequenceTaskEitherArray(
+        bs.map((b, i) => writeBlobSafe(buildVideoPartPath(i))(b))
+    );
     const fullClipPath = partPaths
         .map(buildMergePartsCommand(fullPath))
-        .chain(execCommandIgnoreError)
+        .chain(execCommandIgnoreErrorSafe)
         .map(logWith("Command ran:"))
         .map(() => fullPath);
 
