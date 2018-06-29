@@ -1,7 +1,7 @@
 import { desktopCapturer } from "electron";
 import { TaskEither, tryCatch } from "fp-ts/lib/TaskEither";
 import { fromPromise, periodic, Stream } from "most";
-import { create, insert } from "../../lru";
+import { create, insert } from "../../utils/lru";
 import { writeBlobSafe, concatBlobsSafe, writeSafe } from "../../utils/blob";
 import { logWith } from "../../utils/log";
 import { sequenceTaskEitherArray } from "../../utils/task";
