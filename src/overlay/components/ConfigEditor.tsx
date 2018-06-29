@@ -102,6 +102,6 @@ const commitButton = (handleSubmit: () => void) => (
         className="bg-blue hover:bg-blue-dark text-white py-2 px-4 rounded"
         type="button"
     >
-        Save & Restart
+        Save & Start
     </button>
 );

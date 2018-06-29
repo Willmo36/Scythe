@@ -6,7 +6,10 @@ import { start } from "../../domain/recordingState";
 import { CommandStreams } from "../../domain/commands";
 import { logWith } from "../../utils/log";
 
-const commitConfigHandler = (cmds: CommandStreams): TransitionHandler => t => {
+const commitConfigHandler = (
+    cmds: CommandStreams,
+    dispatch: (t: Transition) => void
+): TransitionHandler => t => {
     if (t.type !== "COMMIT_CONFIG") return empty();
 
     return of(
@@ -14,7 +17,7 @@ const commitConfigHandler = (cmds: CommandStreams): TransitionHandler => t => {
             const event$ = start(cmds, t.payload);
             const sub = some(
                 event$.subscribe({
-                    next: logWith("$$next"),
+                    next: ev => dispatch({ type: "RECORDING_EVENT", payload: ev }),
                     complete: logWith("$$complete"),
                     error: logWith("$$error")
                 })
@@ -32,5 +35,6 @@ const commitConfigHandler = (cmds: CommandStreams): TransitionHandler => t => {
 
 export const createCommitConfigHandler = (
     cmds: CommandStreams,
+    dispatch: (t: Transition) => void,
     t$: Stream<Transition>
-): Stream<StateUpdate> => t$.chain(commitConfigHandler(cmds));
+): Stream<StateUpdate> => t$.chain(commitConfigHandler(cmds, dispatch));
