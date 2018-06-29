@@ -37,3 +37,14 @@ const mergeAudoVideoFiles = (paths: { audio: string; video: string }) =>
 
 const zipper = (video: string) => (audio: string) => ({ video, audio });
 const captureStartRecordingEvent = constant<RecordingEvent>({ type: "CAPTURE_START" });
+
+export const showRecordingEvent = (re: RecordingEvent) => {
+    switch (re.type) {
+        case "CAPTURE_START":
+            return "🎙️";
+        case "CAPTURE_COMPLETE":
+            return "💾";
+        case "ERROR":
+            return "⚠️";
+    }
+};

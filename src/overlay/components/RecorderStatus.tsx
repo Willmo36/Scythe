@@ -1,5 +1,5 @@
 import * as React from "react";
-import { RecordingEvent } from "../../domain/recordingState";
+import { RecordingEvent, showRecordingEvent } from "../../domain/recordingState";
 import { Option } from "fp-ts/lib/Option";
 
 export class RecorderStatus extends React.Component<
@@ -7,10 +7,13 @@ export class RecorderStatus extends React.Component<
     {}
 > {
     render() {
-        const latestEvent = this.props.recordingEvent.fold("No events received", ev => ev.type);
+        const latestEvent = this.props.recordingEvent.fold("🎬", showRecordingEvent);
         return (
-            <div className="font-sans text-grey-lighter bg-indigo-dark p-2 border-2 border-indigo-darker shadow-md">
-                <p>{latestEvent}</p>
+            <div style={{ width: 50 }}>
+                <div id="drag" className="bg-indigo-darker" />
+                <div className="font-sans text-grey-lighter bg-indigo-dark p-2 border-2 border-indigo-darker shadow-md">
+                    <p>{latestEvent}</p>
+                </div>
             </div>
         );
     }

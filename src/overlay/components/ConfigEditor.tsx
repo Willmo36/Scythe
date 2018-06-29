@@ -17,20 +17,23 @@ export class ConfigEditor extends React.Component<
         );
 
         return (
-            <div className="font-sans text-grey-lighter bg-indigo-dark p-2 border-2 border-indigo-darker shadow-md">
-                <div className="mb-4">{configAction}</div>
-                <div className="mb-4">
-                    <label className="block text-sm mb-2">Choose window:</label>
-                    {listScreens(this.props.state.configBuilder.videoScreens, id =>
-                        this.props.dispatch({ type: "CHOOSE_SCREEN", payload: id })
-                    )}
-                </div>
+            <div>
+                <div id="drag" className="bg-indigo-darker" />
+                <div className="font-sans text-grey-lighter bg-indigo-dark p-2 border-2 border-indigo-darker shadow-md">
+                    <div className="mb-4">{configAction}</div>
+                    <div className="mb-4">
+                        <label className="block text-sm mb-2">📺 Choose window:</label>
+                        {listScreens(this.props.state.configBuilder.videoScreens, id =>
+                            this.props.dispatch({ type: "CHOOSE_SCREEN", payload: id })
+                        )}
+                    </div>
 
-                <div className="mb-4">
-                    <label className="block text-sm mb-2">Choose microphone:</label>
-                    {listMicrophones(this.props.state.configBuilder.audioDevices, id =>
-                        this.props.dispatch({ type: "CHOOSE_AUDIO", payload: id })
-                    )}
+                    <div>
+                        <label className="block text-sm mb-2">🎤 Choose microphone:</label>
+                        {listMicrophones(this.props.state.configBuilder.audioDevices, id =>
+                            this.props.dispatch({ type: "CHOOSE_AUDIO", payload: id })
+                        )}
+                    </div>
                 </div>
             </div>
         );
@@ -45,9 +48,11 @@ const ScreenList: React.SFC<{
         <p>No screens found</p>
     ) : (
         <select
+            defaultValue="-"
             className="shadow border rounded-sm w-full py-2 px-3 leading-tight"
-            onChange={e => props.handleChange(e.target.value)}
+            onChange={e => ignoreEmpty(e, props.handleChange)}
         >
+            {emptyOption}
             {props.screens.map(sc => <option value={sc.id}>{sc.name}</option>)}
         </select>
     );
@@ -71,9 +76,11 @@ const MicrophoneList: React.SFC<{
         <p>No microphones found</p>
     ) : (
         <select
+            defaultValue="-"
             className="shadow border rounded-sm w-full py-2 px-3 leading-tight"
-            onChange={e => props.handleChange(e.target.value)}
+            onChange={e => ignoreEmpty(e, props.handleChange)}
         >
+            {emptyOption}
             {props.devices.map(d => <option value={d.deviceId}>{d.label}</option>)}
         </select>
     );
@@ -91,7 +98,7 @@ const listMicrophones = (
 
 const ConfigValidationMessages: React.SFC<{ val: string[] }> = props => (
     <div className="bg-orange-lightest border-l-4 border-orange text-orange-dark p-4" role="alert">
-        <p className="font-bold">Config incomplete</p>
+        <p className="font-bold">⚠️️️️️️️ Config incomplete</p>
         <ul>{props.val.map(msg => <li key={msg}>{msg}</li>)}</ul>
     </div>
 );
@@ -99,9 +106,14 @@ const ConfigValidationMessages: React.SFC<{ val: string[] }> = props => (
 const commitButton = (handleSubmit: () => void) => (
     <button
         onClick={handleSubmit}
-        className="bg-blue hover:bg-blue-dark text-white py-2 px-4 rounded"
+        className="bg-green hover:bg-green-dark text-white py-2 px-4 rounded block text-center	"
         type="button"
     >
-        Save & Start
+        🎬 Start
     </button>
 );
+
+const emptyValue = "-";
+const emptyOption = <option value={emptyValue}>{emptyValue}</option>;
+const ignoreEmpty = (event: React.ChangeEvent<HTMLSelectElement>, fn: (val: string) => void) =>
+    event.target.value !== emptyValue && fn(event.target.value);
