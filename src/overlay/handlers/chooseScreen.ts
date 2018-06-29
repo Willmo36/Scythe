@@ -1,9 +1,9 @@
 import { create } from "@most/create";
 import produce from "immer";
-import { Stream, empty } from "most";
-import * as Video from "../../recorders/video";
-import { inProgress, completed, failed } from "../../domain/RemoteData";
-import { State, Transition, StateUpdate, TransitionHandler } from "../state";
+import { empty, Stream } from "most";
+import * as Video from "../../domain/recorders/video";
+import { completed, failed, inProgress } from "../../domain/RemoteData";
+import { State, StateUpdate, Transition, TransitionHandler } from "../state";
 
 const chooseScreenHandler: TransitionHandler = t =>
     t.type !== "CHOOSE_SCREEN"
@@ -19,7 +19,6 @@ const chooseScreenHandler: TransitionHandler = t =>
                   .bimap<StateUpdate, StateUpdate>(
                       err =>
                           produce(d => {
-                              console.warn("THE ERRR", err);
                               d.configBuilder.videoMediaStream = failed(err);
                           }),
                       ms =>

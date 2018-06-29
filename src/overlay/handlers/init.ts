@@ -1,10 +1,10 @@
 import { create } from "@most/create";
 import produce from "immer";
-import { Stream, empty } from "most";
-import * as Audio from "../../recorders/audio";
-import * as Video from "../../recorders/video";
-import { inProgress, completed, failed } from "../../domain/RemoteData";
-import { State, Transition, StateUpdate, TransitionHandler } from "../state";
+import { empty, Stream } from "most";
+import * as Video from "../..//domain/recorders/video";
+import * as Audio from "../../domain/recorders/audio";
+import { completed, failed, inProgress } from "../../domain/RemoteData";
+import { State, StateUpdate, Transition, TransitionHandler } from "../state";
 
 const initHandler: TransitionHandler = t =>
     t.type !== "INIT"

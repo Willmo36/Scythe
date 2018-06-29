@@ -1,10 +1,10 @@
-import { Stream, fromPromise, zip } from "most";
-import { Config } from "./config";
-import * as Audio from "../recorders/audio";
-import * as Video from "../recorders/video";
-import { CommandStreams } from "../commands";
+import { fromPromise, Stream } from "most";
+import { CommandStreams } from "../domain/commands";
+import { buildMergeAuidoVideoCommand, execCommandIgnoreError } from "./ffmpegCommands";
 import { zipTaskStreams } from "../utils/task";
-import { execCommandIgnoreError, makeMergeAuidoVideoCommand } from "../recorders/merger";
+import { Config } from "./config";
+import * as Audio from "./recorders/audio";
+import * as Video from "./recorders/video";
 
 export type RecordingEvent = { type: "RESULT"; payload: string };
 
@@ -28,4 +28,4 @@ export function start(commands: CommandStreams, config: Config): Stream<Recordin
 }
 
 const mergeAudoVideoFiles = (paths: { audio: string; video: string }) =>
-    execCommandIgnoreError(makeMergeAuidoVideoCommand(paths.video, paths.audio));
+    execCommandIgnoreError(buildMergeAuidoVideoCommand(paths.video, paths.audio));

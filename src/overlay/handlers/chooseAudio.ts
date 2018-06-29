@@ -1,9 +1,9 @@
 import { create } from "@most/create";
 import produce from "immer";
-import { Stream, empty } from "most";
-import * as Audio from "../../recorders/audio";
-import { inProgress, completed, failed } from "../../domain/RemoteData";
-import { State, Transition, StateUpdate, TransitionHandler } from "../state";
+import { empty, Stream } from "most";
+import * as Audio from "../../domain/recorders/audio";
+import { completed, failed, inProgress } from "../../domain/RemoteData";
+import { State, StateUpdate, Transition, TransitionHandler } from "../state";
 
 const chooseAudioHandler: TransitionHandler = t =>
     t.type !== "CHOOSE_AUDIO"

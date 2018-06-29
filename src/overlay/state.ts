@@ -7,7 +7,7 @@ import { createChooseScreenHandler } from "./handlers/chooseScreen";
 import { createCommitConfigHandler } from "./handlers/commitConfig";
 import { createInitHandler } from "./handlers/init";
 import { RecordingEvent } from "../domain/recordingState";
-import { commands } from "../commands";
+import { commands } from "../domain/commands";
 
 export type State = {
     configBuilder: ConfigBuilder;

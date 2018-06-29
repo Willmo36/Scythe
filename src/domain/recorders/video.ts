@@ -2,17 +2,13 @@ import { desktopCapturer } from "electron";
 import { Task, task } from "fp-ts/lib/Task";
 import { tryCatch } from "fp-ts/lib/TaskEither";
 import { fromPromise, periodic, Stream } from "most";
-import { writeBlobTask, combineBlobs, writeFile2 } from "../blob";
+import { create, insert } from "../../lru";
+import { combineBlobs, writeBlobTask, writeFile2 } from "../../utils/blob";
+import { logWith } from "../../utils/log";
+import { sequenceTaskArray } from "../../utils/task";
 import { CommandStreams } from "../commands";
-import { create, insert } from "../lru";
-import { logWith } from "../utils/log";
-import {
-    buildVideoPath,
-    buildMergePartsCommand,
-    execCommandIgnoreError,
-    buildVideoPartPath
-} from "./merger";
-import { sequenceTaskArray } from "../utils/task";
+import { buildMergePartsCommand, execCommandIgnoreError } from "../ffmpegCommands";
+import { buildVideoPartPath, buildVideoPath } from "../pathBuilders";
 
 const makeVideoConstraints = (id: string) => ({
     audio: false,

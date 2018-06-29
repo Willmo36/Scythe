@@ -1,7 +1,7 @@
 import * as path from "path";
 import * as fs from "fs";
 import { Task } from "fp-ts/lib/Task";
-import { sequencePromiseArray } from "./utils/promise";
+import { sequencePromiseArray } from "./promise";
 
 export const writeBlobs = (ext: string) => (blobs: Blob[]): Task<void> =>
     new Task(() => {

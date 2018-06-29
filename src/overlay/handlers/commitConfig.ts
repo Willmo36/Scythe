@@ -3,7 +3,7 @@ import { Stream, empty, of } from "most";
 import { Transition, StateUpdate, TransitionHandler } from "../state";
 import { some } from "fp-ts/lib/Option";
 import { start } from "../../domain/recordingState";
-import { CommandStreams } from "../../commands";
+import { CommandStreams } from "../../domain/commands";
 import { logWith } from "../../utils/log";
 
 const commitConfigHandler = (cmds: CommandStreams): TransitionHandler => t => {

@@ -2,7 +2,7 @@ import { tryCatch } from "fp-ts/lib/TaskEither";
 import { CommandStreams } from "../commands";
 import { fromPromise } from "most";
 import * as path from "path";
-import { writeBlobTask } from "../blob";
+import { writeBlobTask } from "../../utils/blob";
 
 export const getAllAudioInfoSafe = tryCatch(
     () => navigator.mediaDevices.enumerateDevices(),
