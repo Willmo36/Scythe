@@ -6,7 +6,7 @@ import { start } from "../../domain/recordingState";
 import { CommandStreams } from "../../domain/commands";
 import { logWith } from "../../utils/log";
 
-const commitConfigHandler = (
+export const commitConfigHandler = (
     cmds: CommandStreams,
     dispatch: (t: Transition) => void
 ): TransitionHandler => t => {
@@ -32,9 +32,3 @@ const commitConfigHandler = (
         })
     );
 };
-
-export const createCommitConfigHandler = (
-    cmds: CommandStreams,
-    dispatch: (t: Transition) => void,
-    t$: Stream<Transition>
-): Stream<StateUpdate> => t$.chain(commitConfigHandler(cmds, dispatch));

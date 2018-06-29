@@ -5,7 +5,7 @@ import * as Audio from "../../domain/recorders/audio";
 import { completed, failed, inProgress } from "../../domain/RemoteData";
 import { State, StateUpdate, Transition, TransitionHandler } from "../state";
 
-const chooseAudioHandler: TransitionHandler = t =>
+export const chooseAudioHandler: TransitionHandler = t =>
     t.type !== "CHOOSE_AUDIO"
         ? empty()
         : create<StateUpdate>(add => {
@@ -29,6 +29,3 @@ const chooseAudioHandler: TransitionHandler = t =>
                   .fold(add, add)
                   .run();
           });
-
-export const createChooseAudioHandler = (t$: Stream<Transition>): Stream<StateUpdate> =>
-    t$.chain(chooseAudioHandler);

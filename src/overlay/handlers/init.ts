@@ -6,7 +6,7 @@ import * as Audio from "../../domain/recorders/audio";
 import { completed, failed, inProgress } from "../../domain/RemoteData";
 import { State, StateUpdate, Transition, TransitionHandler } from "../state";
 
-const initHandler: TransitionHandler = t =>
+export const initHandler: TransitionHandler = t =>
     t.type !== "INIT"
         ? empty()
         : create<StateUpdate>(add => {
@@ -45,6 +45,3 @@ const initHandler: TransitionHandler = t =>
                   .fold(add, add)
                   .run();
           });
-
-export const createInitHandler = (t$: Stream<Transition>): Stream<StateUpdate> =>
-    t$.chain(initHandler);

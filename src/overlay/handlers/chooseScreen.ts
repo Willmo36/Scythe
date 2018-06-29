@@ -5,7 +5,7 @@ import * as Video from "../../domain/recorders/video";
 import { completed, failed, inProgress } from "../../domain/RemoteData";
 import { State, StateUpdate, Transition, TransitionHandler } from "../state";
 
-const chooseScreenHandler: TransitionHandler = t =>
+export const chooseScreenHandler: TransitionHandler = t =>
     t.type !== "CHOOSE_SCREEN"
         ? empty()
         : create<StateUpdate>(add => {
@@ -29,6 +29,3 @@ const chooseScreenHandler: TransitionHandler = t =>
                   .fold(add, add)
                   .run();
           });
-
-export const createChooseScreenHandler = (t$: Stream<Transition>): Stream<StateUpdate> =>
-    t$.chain(chooseScreenHandler);
