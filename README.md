@@ -4,12 +4,16 @@ The goal of Scythe was to be able to capture the last N seconds of a screen/app 
 
 It's written using Electron, TypeScript and FFMPEG, designed to be an overlay widget, similar to [Discord's overlay](https://support.discordapp.com/hc/en-us/articles/217659737-Games-Overlay-101)
 
-This is not a "working product". It _sort of works_ but is extremely resource intensive (not for classic electron reasons).
+This is not a finished project and at present I will not be returning to it. As you'll find below I simply could not get the screen recording to work properly within the technical bounds I set myself (staying within electron) and wish to spend my time exploring other ideas and topics. I've opened sourced this project to document my attempts and as a reference for the vairous techniques used throughout.
 
 I've not packaged this up but you can run it locally.
 
 1.  `yarn install`
 2.  `yarn run start`
+3.  Select the screen and mic to use
+4.  Hit `f8` to commit the last 10 seconds and start recording audio
+5.  Hit `f9` to close the audio recording and finish up
+6.  You'll find the MP4 in `/output`
 
 # Stack
 
